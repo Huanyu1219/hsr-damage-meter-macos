@@ -1,6 +1,5 @@
 # 敌方信息与资料更新
 
-- 顶部指标字号由 34pt 调整为 28pt。
 - `OnInitializeEnemy.enemy` 提供模板 ID、实例 UID、名称与基础 HP。实例 UID 作为聚合主键，同名怪物不会合并。
 - `OnStatChange` 中 Enemy 的 CurrentHP / MaxHP 更新血量；不使用我方伤害扣算 HP，保留恢复与阶段变化。
 - `OnUpdateTeamFormation` 标记在场/离场；`OnTurnBegin.turn_owner` / `OnTurnEnd` 标记行动中；`OnEntityDefeated` 标记击败。初始化晚于血量更新时保留已接收的实时值。

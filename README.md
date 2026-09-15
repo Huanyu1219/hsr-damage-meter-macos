@@ -93,7 +93,8 @@ Swift 客户端（解码 + CombatStore actor）
 - [IPC 协议规范](docs/IPC_PROTOCOL.md) —— 消息格式与事件类型
 - [原生应用使用](docs/NATIVE_APP.md) —— 功能说明与常见问题
 - [DLL 安装指南](docs/DLL_INSTALL.md) —— 下载、放置位置、校验与回滚
-- [项目规范](CODEX_SPEC.md) —— 工程要求与 UI 设计约束
+- [架构说明](docs/ARCHITECTURE.md) —— 模块边界与数据流
+- [UI 规范](docs/UI_SPEC.md) —— 布局、状态与交互约束
 - [技术决策](docs/adr/) —— 为什么选择复用 Veritas、为什么需要无 UI 补丁
 
 ## 许可与致谢

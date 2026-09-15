@@ -1,9 +1,10 @@
 # ADR 0002 — 原生显示与原浮窗隔离实验
 
-用户于 2026-09-13 明确要求先完成 Mac UI，再禁用 DLL 自带 UI，验证卡顿是否来自该路径。
-这是对原阶段顺序的授权调整。范围为独立可运行的最小接收面板与单变量 DLL 对照构建。
+状态：已采纳（2026-09-13）
 
-## 本轮实现
+为隔离游戏内浮窗的性能影响，先实现独立可运行的 Mac 接收面板，再使用单变量 DLL 构建跳过上游浮窗初始化。
+
+## 实现
 
 - SwiftUI 原生窗口、三张指标卡、伤害排行、连接状态、重连、带确认的重置与菜单栏。
 - URLSessionWebSocketTask 连接已有 Engine.IO v4 / Socket.IO 默认 namespace，固定 loopback 1305。
@@ -11,7 +12,7 @@
 - LiveCombatStore actor 顺序处理事件；UI 最高 10 Hz 读取快照，无逐事件动画。
 - 保留源 JSON 小数，用 Decimal 聚合；浮点源精度不可恢复。DPS 为本机接收时间估计，不冒充游戏时间。
 - 对晚连接、断线、未知归属与结算差异显示不完整。上游没有序列号，无法保证检测所有丢包/重排。
-- 新文件夹 VeritasNetworking、LiveDomain、NativeApp、LiveTests 与原 M0 协议隔离。
+- `VeritasNetworking`、`LiveDomain`、`NativeApp` 和 `LiveTests` 与 v1 协议模型隔离。
 - 原生 App 通过 Swift Package 构建并封装 .app；不创建空 xcodeproj。
 
 ## DLL 对照

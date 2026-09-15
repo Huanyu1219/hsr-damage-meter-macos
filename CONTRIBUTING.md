@@ -34,7 +34,7 @@ python3 -m venv .tools/validation-venv
 - Rust 运行 `cargo fmt --check` 和 `cargo test --locked`。
 - 不提交密钥、Token、真实战斗记录、游戏安装路径、DLL 构建产物或个人数据。
 - 第三方素材必须记录来源、固定版本、校验和与许可证。许可不明确的素材不得新增到仓库。
-- 修改协议、存储格式或重要架构决策时，同步更新 Schema、测试、ADR 和 `.project-state.json`。
+- 修改协议、存储格式或重要架构决策时，同步更新 Schema、测试和 ADR。
 
 ## PR 审核
 

@@ -12,6 +12,6 @@
 
 点亮条件：非演示、连接成功、场次活动且未结束、本场伤害次数大于零、本次连接收到玩家伤害。断线、初始化新场次或结算清除新数据标记；连接恢复后等新伤害再点亮。无需新增定时器或游戏端日志。语音辅助标签和悬停文本补充状态，不单靠颜色。
 
-源图 macos/Assets/MenuBarCombatSource.png；scripts/make-combat-menu-icon.swift 生成透明主图，再生成18/36px资源。Dock/Finder 图标保持用户之前确认的圆形角色图。
+源图为 `macos/Assets/MenuBarCombatSource.png`；`scripts/make-combat-menu-icon.swift` 生成透明主图及 18/36px 资源。Dock/Finder 使用 `macos/Assets/AppIcon.png`。
 
 验证：31项Swift测试通过，2项外部联调跳过；构建、签名及格式检查通过。新增菜单栏活动条件和实际图像尺寸/像素检查。
