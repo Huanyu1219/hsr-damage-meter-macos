@@ -1,26 +1,37 @@
-# HSR Damage Meter
+# HSR Damage Meter for macOS
 
-面向在 Wine 中运行《崩坏：星穹铁道》的 Mac 用户：复用 Veritas 已解析的战斗数据，
-通过 localhost WebSocket 交给原生 Swift macOS 客户端。
+为在 Wine 中运行《崩坏：星穹铁道》的 Mac 玩家设计的本地伤害统计工具。
 
-当前版本提供原生实时面板、三种浮窗、菜单栏状态、敌人信息、本地战斗历史与 JSON 导出。
-从源码构建后打开 `dist/HSR Damage Meter.app`；设计来源与数据取舍见 [UI_REFERENCES](docs/UI_REFERENCES.md)。
+通过接入开源 Veritas 解析的战斗数据（WebSocket），在 Mac 上提供原生实时伤害面板、浮窗、菜单栏状态显示、敌人信息追踪和本地战斗历史导出。
 
-2026-09-13 更新：已从现有 Veritas 0.2.52 Socket.IO 收到真实伤害事件；用户批准优先复用该接口。
-现已交付 SwiftUI 实时面板、4.5.54 离线角色名称表，以及可复现的无 UI Collector 补丁。
-游戏更新可能改变运行兼容性。见 [原生 App 使用](docs/NATIVE_APP.md)、[安装与回滚](docs/UI_ISOLATION_ACCEPTANCE.md)、[路线调整](docs/adr/0001-reuse-veritas-socketio.md) 与 [卡顿初诊](docs/PERFORMANCE_DIAGNOSIS.md)。
-现有接口诊断：`python3 scripts/probe-veritas.py --seconds 10`。
+## 特性
 
-## 架构与规范
+- **原生 macOS 设计** —— 使用 SwiftUI，与系统视觉风格一致
+- **实时伤害显示** —— 接收 Veritas 解析的战斗事件，零延迟更新
+- **灵活的显示方案** —— 可选主窗口、浮窗模式、菜单栏状态
+- **战斗历史** —— 本地存储每场战斗的数据，支持 JSON 导出
+- **游戏隔离** —— Swift 客户端完全独立，不触及游戏进程
+- **离线可测试** —— 无需游戏即可验证协议和数据流
 
-Veritas → 非阻塞事件桥 → localhost WebSocket → Swift 解码 → CombatStore actor → 原生 UI。
-Swift 客户端不接触游戏进程。工程与 UI 权威来源为 [CODEX_SPEC.md](CODEX_SPEC.md)。
-现阶段交付五类事件的 JSON Schema、Rust/Swift 类型、共享样例及往返测试。
+## 快速开始
 
-## Quickstart / Demo
+### 环境要求
 
-需要 macOS 14+、Swift 6（Xcode Command Line Tools）、Rust 1.98.1、Python 3.10+。
-在项目根目录执行：
+- macOS 14 或更新版本
+- Swift 6（Xcode Command Line Tools）
+- Rust 1.98.1+
+- Python 3.10+
+
+### 构建应用
+
+在项目根目录运行：
+
+```sh
+./scripts/build-macos-app.sh
+open 'dist/HSR Damage Meter.app'
+```
+
+### 验证开发环境
 
 ```sh
 python3 -m venv .tools/validation-venv
@@ -28,35 +39,92 @@ python3 -m venv .tools/validation-venv
 ./scripts/check.sh
 ```
 
-Rust 使用标准 Cargo 或本机已配置的项目内隔离工具链；说明见 [开发指南](docs/DEVELOPMENT.md)。
-不需要游戏即可运行协议 Demo：
+### 测试协议数据流（无需游戏）
 
 ```sh
+# Rust 示例
 ./scripts/cargo.sh run --locked --bin fixture-roundtrip < protocol/fixtures/sample_session.jsonl
+
+# Swift 示例
 swift run --package-path macos/HSRDamageMeter fixture-roundtrip < protocol/fixtures/sample_session.jsonl
 ```
 
-输出为标准化 JSONL（可空字段可能省略），其中包含用于精度测试的 Int64 最大值，**并非真实战斗记录**。
+输出为标准化 JSONL 格式，包含压力测试数据（Int64 最大值等），**不代表真实战斗**。
 
-构建 macOS App：
+## 安装收集器
 
-```sh
-./scripts/build-macos-app.sh
-open 'dist/HSR Damage Meter.app'
-```
-
-Collector 安装脚本只接受显式游戏目录，且会在替换前验证哈希并确认游戏已经退出：
+如果要从 Wine 中的游戏接收实时数据，安装对应的 Collector 补丁：
 
 ```sh
 python3 scripts/install-collector.py no-ui-info --game-dir '/path/to/Honkai Star Rail'
 ```
 
-## 许可与项目关系
+脚本会验证哈希、确认游戏已退出后再替换文件。详见 [安装与回滚说明](docs/UI_ISOLATION_ACCEPTANCE.md)。
 
-M1 接入 Collector，M2–M3 网络与聚合，M4–M6 Live/Overlay/菜单栏，M7–M9 历史、分析、设置。
-上游已固定为 hessiser/veritas 0.2.52，MIT 源码与许可证保留于 collector/upstream-veritas。
-本项目采用 [GNU AGPL v3](LICENSE)。Vendored Veritas 仍适用其 MIT 许可证；角色资源来源仓库采用 AGPL-3.0。完整来源及例外见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+## 架构概览
+
+```
+Veritas（游戏数据解析）
+    ↓
+Rust 协议桥（非阻塞事件）
+    ↓
+localhost WebSocket
+    ↓
+Swift 客户端（解码 + CombatStore actor）
+    ↓
+原生 macOS UI
+```
+
+- **Collector** 模块：Rust 协议定义与事件校验
+- **Swift App**：macOS 图形界面与本地存储
+- **Protocol**：共享 JSON Schema 与测试夹具
+
+## 文档导航
+
+- [开发指南](docs/DEVELOPMENT.md) —— 工具链、编译选项、调试
+- [IPC 协议规范](docs/IPC_PROTOCOL.md) —— 消息格式与事件类型
+- [原生应用使用](docs/NATIVE_APP.md) —— 功能说明与常见问题
+- [项目规范](CODEX_SPEC.md) —— 工程要求与 UI 设计约束
+- [技术决策](docs/adr/) —— 为什么选择复用 Veritas、为什么需要无 UI 补丁
+
+## 许可与致谢
+
+本项目采用 **GNU AGPL v3**（见 [LICENSE](LICENSE)）。
+
+**特别感谢：**
+- [hessiser/veritas](https://github.com/hessiser/veritas) —— 开源游戏数据解析器（MIT 许可，代码保留在 `collector/upstream-veritas`）
+- 角色名称与资源来自社区数据仓库
+
+完整第三方许可清单见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+### 免责声明
 
 本项目是非官方社区工具，与 HoYoverse 无隶属、认可或赞助关系。《崩坏：星穹铁道》名称、角色和游戏素材的权利归其各自权利人所有。
 
-贡献与安全问题分别参见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [SECURITY.md](SECURITY.md)。
+## 贡献与反馈
+
+欢迎报告问题、建议功能或提交代码。详见：
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) —— 贡献指南与 PR 流程
+- [SECURITY.md](SECURITY.md) —— 安全漏洞报告渠道
+
+## 开发路线图
+
+| 阶段 | 目标 |
+|-----|-----|
+| M1 | Collector 集成、协议桥接 |
+| M2–M3 | 网络层、事件聚合 |
+| M4–M6 | 主面板、浮窗、菜单栏 |
+| M7–M9 | 战斗历史、分析、设置 |
+
+当前进度：原生 macOS UI 与 Veritas 0.2.52 兼容性验证中。
+
+---
+
+有问题？检查游戏兼容性：
+
+```sh
+python3 scripts/probe-veritas.py --seconds 10
+```
+
+这会诊断 Veritas WebSocket 连接状态和实时事件流。
