@@ -1,0 +1,7 @@
+{"protocolVersion":1,"type":"hello","sequence":1,"timestamp":1726201000.0,"payload":{"collector":"veritas-bridge","collectorVersion":"0.1.0","gameVersion":"unknown","capabilities":["damage","combat_session","party"]}}
+{"protocolVersion":1,"type":"combat_start","sequence":2,"timestamp":1726201000.125,"payload":{"sessionId":"11111111-2222-4333-8444-555555555555"}}
+{"protocolVersion":1,"type":"party_update","sequence":3,"timestamp":1726201000.25,"payload":{"members":[{"entityId":1001,"characterId":1310,"name":"Firefly"},{"entityId":1002,"characterId":null,"name":null}]}}
+{"protocolVersion":1,"type":"damage","sequence":4,"timestamp":1726201000.375,"payload":{"sessionId":"11111111-2222-4333-8444-555555555555","sourceEntityId":1001,"sourceCharacterId":1310,"targetEntityId":20001,"skillId":131001,"amount":182930,"damageType":"unknown","isCrit":false}}
+{"protocolVersion":1,"type":"damage","sequence":5,"timestamp":1726201000.5,"payload":{"sessionId":"11111111-2222-4333-8444-555555555555","sourceEntityId":1002,"sourceCharacterId":null,"targetEntityId":null,"skillId":null,"amount":0,"damageType":null,"isCrit":null}}
+{"protocolVersion":1,"type":"damage","sequence":6,"timestamp":1726201000.625,"payload":{"sessionId":"11111111-2222-4333-8444-555555555555","amount":9223372036854775807}}
+{"protocolVersion":1,"type":"combat_end","sequence":7,"timestamp":1726201000.75,"payload":{"sessionId":"11111111-2222-4333-8444-555555555555","reason":"normal"}}

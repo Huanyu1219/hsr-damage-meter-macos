@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "action.schema.json",
+  "title": "Reserved future action events; not supported in protocol v1 MVP",
+  "not": {}
+}

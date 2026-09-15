@@ -1,0 +1,17 @@
+--- a/src/entry.rs
++++ b/src/entry.rs
+@@ -47,10 +47,10 @@
+ 
+     thread::spawn(|| server::start_server());
+ 
+-    match overlay::initialize(toasts) {
+-        Ok(_) => log::info!("Overlay initialized successfully"),
+-        Err(e) => log::error!("Overlay failed to initialize: {}", e),
+-    }
++    // Controlled A/B: skip the entire D3D11 overlay initialization path.
++    // Keep collection, Socket.IO, and logging unchanged to isolate UI cost.
++    drop(toasts);
++    log::info!("Native UI build: in-game overlay initialization disabled");
+ }
+ 
+ 

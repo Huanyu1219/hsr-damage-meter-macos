@@ -1,0 +1,9 @@
+{
+  "source": "https://static.nanoka.cc/hsr/4.5.54/monster.json",
+  "site": "https://hsr.nanoka.cc/monster/",
+  "version": "4.5.54",
+  "entries": 632,
+  "sha256": "57231bfbf6be212103bc9956ebe762f70ea23cd3176cca19b0526601545eef0b",
+  "artwork": "https://static.nanoka.cc/assets/hsr/monstermiddleicon/{icon_basename}.webp",
+  "artwork_policy": "Fetch on demand, persist in Application Support; game artwork redistribution rights not verified."
+}

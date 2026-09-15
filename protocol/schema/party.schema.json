@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "party.schema.json",
+  "$defs": {
+    "PartyMember": {
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "characterId": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "entityId"
+      ],
+      "additionalProperties": true
+    },
+    "PartyUpdate": {
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "party.schema.json#/$defs/PartyMember"
+          }
+        }
+      },
+      "required": [
+        "members"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

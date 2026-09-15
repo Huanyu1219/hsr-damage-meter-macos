@@ -1,0 +1,439 @@
+[
+  {
+    "name": "protocolVersion=2",
+    "event": {
+      "protocolVersion": 2,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "sequence=0",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 0,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "sequence=-1",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": -1,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "sequence=9223372036854775808",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 9223372036854775808,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "timestamp=-1",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": -1,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "type=action_start",
+    "event": {
+      "protocolVersion": 1,
+      "type": "action_start",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "missing protocolVersion",
+    "event": {
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "missing type",
+    "event": {
+      "protocolVersion": 1,
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "missing sequence",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "missing timestamp",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "missing payload",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375
+    }
+  },
+  {
+    "name": "invalid amount -1",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": -1,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "invalid amount None",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": null,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "invalid amount 9223372036854775808",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 9223372036854775808,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "invalid amount 1.5",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 1.5,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "invalid amount True",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": true,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "invalid sourceEntityId -1",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": -1,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "invalid isCrit false",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": "false"
+      }
+    }
+  },
+  {
+    "name": "invalid sessionId uuid",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "uuid",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "invalid sessionId None",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": null,
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "missing amount",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111-2222-4333-8444-555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "missing session",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  },
+  {
+    "name": "negative party identity",
+    "event": {
+      "protocolVersion": 1,
+      "type": "party_update",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "members": [
+          {
+            "entityId": -1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "nonhyphenated UUID",
+    "event": {
+      "protocolVersion": 1,
+      "type": "damage",
+      "sequence": 4,
+      "timestamp": 1726201000.375,
+      "payload": {
+        "sessionId": "11111111222243338444555555555555",
+        "sourceEntityId": 1001,
+        "sourceCharacterId": 1310,
+        "targetEntityId": 20001,
+        "skillId": 131001,
+        "amount": 182930,
+        "damageType": "unknown",
+        "isCrit": false
+      }
+    }
+  }
+]

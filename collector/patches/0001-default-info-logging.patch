@@ -1,0 +1,11 @@
+--- a/src/logging.rs
++++ b/src/logging.rs
+@@ -109,7 +109,7 @@
+         if log::set_logger(LOGGER.get().context("Failed to get MultiLogger")?).is_err() {
+             return Err(anyhow!("Failed to set MultiLogger"));
+         }
+-        log::set_max_level(LevelFilter::Trace);
++        log::set_max_level(LevelFilter::Info);
+         Ok(())
+     }
+ }

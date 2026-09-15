@@ -1,0 +1,9 @@
+{
+  "source": "https://static.nanoka.cc/hsr/4.5.54/character.json",
+  "site": "https://hsr.nanoka.cc/",
+  "sourceVersion": "4.5.54",
+  "retrievedAt": "2026-09-13",
+  "sha256": "ed0d80b2231aa51a515ea7e19f2c661494903d2fc286b12aeaa5f7f2485cc0d5",
+  "scope": "Character IDs, localized names and metadata. Not runtime layouts or collection compatibility.",
+  "redistributionLicense": "Not verified; local use only, review rights before publishing the data bundle."
+}

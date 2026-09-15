@@ -1,0 +1,17 @@
+# Local secrets and generated files
+.env
+.env.*
+!.env.example
+.tools/
+.build/
+.build-artifacts/
+target/
+.DS_Store
+._*
+*.xcuserstate
+xcuserdata/
+__pycache__/
+.venv/
+
+dist/
+backups/

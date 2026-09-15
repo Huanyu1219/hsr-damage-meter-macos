@@ -1,0 +1,797 @@
+--- a/macos/HSRDamageMeter/LiveDomain/LiveCombatStore.swift
++++ b/macos/HSRDamageMeter/LiveDomain/LiveCombatStore.swift
+@@ -55,21 +55,29 @@
+   private var sawLineup = false
+   private var sawBegin = false
+   private var hasGap = false
+-  private var historyDatabase: BattleHistoryDatabase?
++  private var historyDatabase: HistoryWorker?
+   private var historyRecord: BattleRecord?
+   private var settlementNeedsSave = false
+   private var deferredHistory: [BattleRecord] = []
+   private var lastCheckpoint = Date.distantPast
+   private var collectorVersion = "未知"
+-  private var retentionDays = 0
++  private var historyWrite: Task<Void, Never>?
++  private var writingRecord: BattleRecord?
++  private var retryAfter = Date.distantPast
++  private var writeFailures = 0
++  private var historyMaintenance = 0
+   public private(set) var historyError: String?
+ 
+   public init() {}
+ 
+   public func reset() {
+     checkpoint(status: snapshot.ended ? nil : "interrupted")
+-    if let record = historyRecord, historyError != nil {
+-      if deferredHistory.count < 32 {
++    if let record = historyRecord,
++      settlementNeedsSave || !record.events.isEmpty || writingRecord?.id == record.id
++    {
++      if deferredHistory.count < 128,
++        deferredHistory.reduce(record.events.count, { $0 + $1.events.count }) <= 262_144
++      {
+         deferredHistory.append(record)
+       } else {
+         historyError = "历史保存持续失败，部分记录未保存"
+@@ -248,12 +256,17 @@
+     return result
+   }
+ 
+-  public func enableHistory(at url: URL) {
++  public func enableHistory(at url: URL) async {
+     guard historyDatabase == nil else { return }
++    let worker = HistoryWorker()
++    historyDatabase = worker
+     do {
+-      historyDatabase = try BattleHistoryDatabase(url: url)
++      try await worker.open(url)
+       historyError = nil
+-    } catch { historyError = "无法打开战斗历史，当前统计仍可使用" }
++    } catch {
++      historyDatabase = nil
++      historyError = "无法打开战斗历史，当前统计仍可使用"
++    }
+   }
+ 
+   private func ensureHistory() {
+@@ -264,7 +277,7 @@
+   }
+ 
+   private func checkpoint(status: String? = nil) {
+-    guard let historyDatabase else { return }
++    guard historyDatabase != nil else { return }
+     lastCheckpoint = Date()
+     // Capture settlement before any database operation, including deferred writes.
+     if let status, var record = historyRecord {
+@@ -275,64 +288,122 @@
+       historyRecord = record
+       settlementNeedsSave = true
+     }
+-    do {
+-      while let record = deferredHistory.first {
+-        try historyDatabase.save(record)
+-        deferredHistory.removeFirst()
+-      }
+-      if snapshot.ended && !settlementNeedsSave && historyRecord?.events.isEmpty == true {
+-        historyError = nil
+-        return
+-      }
+-      if var record = historyRecord, snapshot.eventCount > 0 || sawBegin {
+-        if !settlementNeedsSave { record.snapshot = makeSnapshot() }
+-        historyRecord = record
+-        try historyDatabase.save(record)
+-        historyRecord?.events = []
++    if !settlementNeedsSave { historyRecord?.snapshot = makeSnapshot() }
++    startHistoryWrite()
++  }
++
++  private func startHistoryWrite() {
++    guard historyWrite == nil, historyMaintenance == 0, Date() >= retryAfter,
++      let historyDatabase
++    else { return }
++    let record: BattleRecord
++    if let deferred = deferredHistory.first {
++      record = deferred
++    } else if let current = historyRecord,
++      settlementNeedsSave || !current.events.isEmpty || (!snapshot.ended && sawBegin)
++    {
++      record = current
++    } else {
++      return
++    }
++    writingRecord = record
++    historyWrite = Task {
++      do {
++        try await historyDatabase.save(record)
++        finishHistoryWrite(record, succeeded: true)
++      } catch {
++        finishHistoryWrite(record, succeeded: false)
++      }
++    }
++  }
++
++  private func finishHistoryWrite(_ saved: BattleRecord, succeeded: Bool) {
++    historyWrite = nil
++    writingRecord = nil
++    guard succeeded else {
++      writeFailures = min(writeFailures + 1, 6)
++      retryAfter = Date().addingTimeInterval(min(30, 0.5 * pow(2, Double(writeFailures - 1))))
++      historyError = "历史保存失败，正在重试；请检查磁盘空间"
++      return
++    }
++    writeFailures = 0
++    retryAfter = .distantPast
++    historyError = nil
++    let lastSequence = saved.events.last?.sequence ?? 0
++    if historyRecord?.id == saved.id {
++      historyRecord?.events.removeAll { $0.sequence <= lastSequence }
++      if saved.status != "running", historyRecord?.endedAt == saved.endedAt {
+         settlementNeedsSave = false
+       }
+-      historyError = nil
+-    } catch { historyError = "历史保存失败，正在重试；请检查磁盘空间" }
+-  }
+-
+-  public func history(search: String = "", oldestFirst: Bool = false, offset: Int = 0) throws
++    }
++    if let index = deferredHistory.firstIndex(where: { $0.id == saved.id }) {
++      if saved.status != "running", deferredHistory[index].endedAt == saved.endedAt {
++        deferredHistory.remove(at: index)
++      } else {
++        deferredHistory[index].events.removeAll { $0.sequence <= lastSequence }
++      }
++    }
++    // One write in flight; retain new events until their own write is acknowledged.
++    if !deferredHistory.isEmpty || settlementNeedsSave || (historyRecord?.events.count ?? 0) >= 128
++    {
++      startHistoryWrite()
++    }
++  }
++
++  /// History consumers wait for scheduled writes without holding up incoming combat events.
++  private func drainHistoryWrites() async {
++    checkpoint()
++    while let write = historyWrite { await write.value }
++  }
++
++  /// Called after the receiver stops, so a normal quit does not abandon buffered events.
++  public func finishHistory() async {
++    reset()
++    retryAfter = .distantPast
++    await drainHistoryWrites()
++  }
++
++  public func history(search: String = "", oldestFirst: Bool = false, offset: Int = 0) async throws
+     -> [BattleSummary]
+   {
+     guard let historyDatabase else { throw CocoaError(.fileReadUnknown) }
+-    return try historyDatabase.list(search: search, oldestFirst: oldestFirst, offset: offset)
+-  }
+-
+-  public func historyDetail(id: UUID, includeEvents: Bool = false) throws -> BattleRecord? {
++    await drainHistoryWrites()
++    return try await historyDatabase.list(search: search, oldestFirst: oldestFirst, offset: offset)
++  }
++
++  public func historyDetail(id: UUID, includeEvents: Bool = false) async throws -> BattleRecord? {
+     guard let historyDatabase else { throw CocoaError(.fileReadUnknown) }
+-    return try historyDatabase.load(id: id, includeEvents: includeEvents)
+-  }
+-
+-  public func historyTrend(id: UUID) throws -> [DamageTrendPoint] {
++    await drainHistoryWrites()
++    return try await historyDatabase.load(id: id, includeEvents: includeEvents)
++  }
++
++  public func historyTrend(id: UUID) async throws -> [DamageTrendPoint] {
+     guard let historyDatabase else { throw CocoaError(.fileReadUnknown) }
+-    return try historyDatabase.trend(id: id)
+-  }
+-
+-  public func deleteHistory(ids: [UUID]? = nil, before: Date? = nil) throws {
++    await drainHistoryWrites()
++    return try await historyDatabase.trend(id: id)
++  }
++
++  public func deleteHistory(ids: [UUID]? = nil, before: Date? = nil) async throws {
+     guard let historyDatabase else { throw CocoaError(.fileWriteUnknown) }
+-    try historyDatabase.delete(ids: ids, before: before)
+-    if let record = historyRecord, record.status != "running",
+-      ids?.contains(record.id) ?? (record.startedAt < (before ?? .distantFuture))
+-    {
++    await drainHistoryWrites()
++    historyMaintenance += 1
++    defer {
++      historyMaintenance -= 1
++      startHistoryWrite()
++    }
++    let deleted = try await historyDatabase.delete(ids: ids, before: before)
++    if let record = historyRecord, deleted.contains(record.id) {
+       historyRecord = nil
+       settlementNeedsSave = false
+     }
+-    deferredHistory.removeAll { record in
+-      record.status != "running"
+-        && (ids?.contains(record.id) ?? (record.startedAt < (before ?? .distantFuture)))
+-    }
+-  }
+-
+-  public func setHistoryRetention(days: Int) throws {
++    deferredHistory.removeAll { deleted.contains($0.id) }
++  }
++
++  public func setHistoryRetention(days: Int) async throws {
+     guard [0, 7, 30, 90, 365].contains(days) else { throw CocoaError(.coderInvalidValue) }
+     if days > 0 {
+-      try deleteHistory(before: Date().addingTimeInterval(-Double(days) * 86400))
+-    }
+-    retentionDays = days
++      try await deleteHistory(before: Date().addingTimeInterval(-Double(days) * 86400))
++    }
+   }
+ 
+   private func elapsed() -> Double {
+--- a/macos/HSRDamageMeter/LiveDomain/BattleHistory.swift
++++ b/macos/HSRDamageMeter/LiveDomain/BattleHistory.swift
+@@ -47,7 +47,7 @@
+   public let cumulative: Decimal
+ }
+ 
+-/// Confined to LiveCombatStore's actor. No main-thread database I/O.
++/// Owned by HistoryWorker; never shared across executors.
+ final class BattleHistoryDatabase {
+   private var db: OpaquePointer?
+   private let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+@@ -67,20 +67,34 @@
+       throw Failure.database(message)
+     }
+     sqlite3_busy_timeout(db, 500)
+-    try execute("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
+-    try execute(
+-      """
+-      CREATE TABLE IF NOT EXISTS app_settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+-      INSERT OR IGNORE INTO app_settings VALUES('schema_version','1');
+-      CREATE TABLE IF NOT EXISTS sessions(
+-        id TEXT PRIMARY KEY, started REAL NOT NULL, status TEXT NOT NULL,
+-        duration REAL NOT NULL, total TEXT NOT NULL, names TEXT NOT NULL, snapshot BLOB NOT NULL);
+-      CREATE INDEX IF NOT EXISTS sessions_started ON sessions(started);
+-      CREATE TABLE IF NOT EXISTS damage_events(
+-        session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+-        sequence INTEGER NOT NULL, payload BLOB NOT NULL, PRIMARY KEY(session_id,sequence));
+-      UPDATE sessions SET status='interrupted' WHERE status='running';
+-      """)
++    do {
++      try execute("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
++      try execute("BEGIN IMMEDIATE")
++      try execute(
++        """
++        CREATE TABLE IF NOT EXISTS app_settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
++        INSERT OR IGNORE INTO app_settings VALUES('schema_version','1');
++        CREATE TABLE IF NOT EXISTS sessions(
++          id TEXT PRIMARY KEY, started REAL NOT NULL, status TEXT NOT NULL,
++          duration REAL NOT NULL, total TEXT NOT NULL, names TEXT NOT NULL, snapshot BLOB NOT NULL);
++        CREATE INDEX IF NOT EXISTS sessions_started ON sessions(started);
++        CREATE TABLE IF NOT EXISTS damage_events(
++          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
++          sequence INTEGER NOT NULL, payload BLOB NOT NULL, PRIMARY KEY(session_id,sequence));
++        """)
++      let version = try statement("SELECT value FROM app_settings WHERE key='schema_version'")
++      defer { sqlite3_finalize(version) }
++      guard sqlite3_step(version) == SQLITE_ROW, string(version, 0) == "1" else {
++        throw Failure.database("Unsupported history schema version")
++      }
++      try execute("UPDATE sessions SET status='interrupted' WHERE status='running';")
++      try execute("COMMIT")
++    } catch {
++      try? execute("ROLLBACK")
++      sqlite3_close(db)
++      db = nil
++      throw error
++    }
+   }
+   deinit { if let db { sqlite3_close(db) } }
+ 
+@@ -95,19 +109,29 @@
+     }
+     return stmt
+   }
+-  private func text(_ value: String, at index: Int32, in stmt: OpaquePointer) {
+-    _ = value.withCString { sqlite3_bind_text(stmt, index, $0, -1, transient) }
+-  }
+-  private func blob(_ data: Data, at index: Int32, in stmt: OpaquePointer) {
+-    _ = data.withUnsafeBytes {
++  private func text(_ value: String, at index: Int32, in stmt: OpaquePointer) throws {
++    guard value.utf8.count <= Int(Int32.max),
++      value.withCString({ sqlite3_bind_text(stmt, index, $0, -1, transient) }) == SQLITE_OK
++    else { throw failure() }
++  }
++  private func blob(_ data: Data, at index: Int32, in stmt: OpaquePointer) throws {
++    guard !data.isEmpty, data.count <= Int(Int32.max) else {
++      throw Failure.database("Invalid history payload size")
++    }
++    let result = data.withUnsafeBytes {
+       sqlite3_bind_blob(stmt, index, $0.baseAddress, Int32(data.count), transient)
+     }
++    guard result == SQLITE_OK else { throw failure() }
+   }
+   private func string(_ stmt: OpaquePointer, _ column: Int32) -> String {
+     sqlite3_column_text(stmt, column).map { String(cString: $0) } ?? ""
+   }
+-  private func data(_ stmt: OpaquePointer, _ column: Int32) -> Data {
+-    Data(bytes: sqlite3_column_blob(stmt, column)!, count: Int(sqlite3_column_bytes(stmt, column)))
++  private func data(_ stmt: OpaquePointer, _ column: Int32) throws -> Data {
++    let size = Int(sqlite3_column_bytes(stmt, column))
++    guard sqlite3_column_type(stmt, column) == SQLITE_BLOB, size > 0, size <= 64_000_000,
++      let bytes = sqlite3_column_blob(stmt, column)
++    else { throw Failure.database("Invalid history payload") }
++    return Data(bytes: bytes, count: size)
+   }
+   private func finish(_ stmt: OpaquePointer) throws {
+     guard sqlite3_step(stmt) == SQLITE_DONE else { throw failure() }
+@@ -122,22 +146,22 @@
+       defer { sqlite3_finalize(stmt) }
+       var snapshot = record
+       snapshot.events = []
+-      text(record.id.uuidString, at: 1, in: stmt)
++      try text(record.id.uuidString, at: 1, in: stmt)
+       sqlite3_bind_double(stmt, 2, record.startedAt.timeIntervalSince1970)
+-      text(record.status, at: 3, in: stmt)
++      try text(record.status, at: 3, in: stmt)
+       sqlite3_bind_double(stmt, 4, record.snapshot.elapsed)
+-      text(record.snapshot.total.description, at: 5, in: stmt)
+-      text(record.snapshot.characters.map(\.name).joined(separator: " · "), at: 6, in: stmt)
+-      blob(try JSONEncoder().encode(snapshot), at: 7, in: stmt)
++      try text(record.snapshot.total.description, at: 5, in: stmt)
++      try text(record.snapshot.characters.map(\.name).joined(separator: " · "), at: 6, in: stmt)
++      try blob(try JSONEncoder().encode(snapshot), at: 7, in: stmt)
+       try finish(stmt)
+       let eventStmt = try statement("INSERT OR IGNORE INTO damage_events VALUES(?,?,?)")
+       defer { sqlite3_finalize(eventStmt) }
+       for event in record.events {
+         sqlite3_reset(eventStmt)
+         sqlite3_clear_bindings(eventStmt)
+-        text(record.id.uuidString, at: 1, in: eventStmt)
++        try text(record.id.uuidString, at: 1, in: eventStmt)
+         sqlite3_bind_int64(eventStmt, 2, Int64(event.sequence))
+-        blob(try JSONEncoder().encode(event), at: 3, in: eventStmt)
++        try blob(try JSONEncoder().encode(event), at: 3, in: eventStmt)
+         try finish(eventStmt)
+       }
+       try execute("COMMIT")
+@@ -153,8 +177,8 @@
+       "SELECT id,started,status,duration,total,names FROM sessions WHERE status!='running' AND (?='' OR instr(names,?)>0) ORDER BY started \(direction),id \(direction) LIMIT 50 OFFSET ?"
+     )
+     defer { sqlite3_finalize(stmt) }
+-    text(search, at: 1, in: stmt)
+-    text(search, at: 2, in: stmt)
++    try text(search, at: 1, in: stmt)
++    try text(search, at: 2, in: stmt)
+     sqlite3_bind_int64(stmt, 3, Int64(max(0, offset)))
+     var result: [BattleSummary] = []
+     var step = sqlite3_step(stmt)
+@@ -175,11 +199,14 @@
+   func load(id: UUID, includeEvents: Bool = false) throws -> BattleRecord? {
+     let stmt = try statement("SELECT snapshot,status FROM sessions WHERE id=?")
+     defer { sqlite3_finalize(stmt) }
+-    text(id.uuidString, at: 1, in: stmt)
++    try text(id.uuidString, at: 1, in: stmt)
+     let step = sqlite3_step(stmt)
+     if step == SQLITE_DONE { return nil }
+     guard step == SQLITE_ROW else { throw failure() }
+     var record = try JSONDecoder().decode(BattleRecord.self, from: data(stmt, 0))
++    guard record.schemaVersion == 1 else {
++      throw Failure.database("Unsupported battle record version")
++    }
+     record.status = string(stmt, 1)
+     if record.status != "completed" { record.snapshot.partial = true }
+     record.snapshot.active = false
+@@ -187,7 +214,7 @@
+       let events = try statement(
+         "SELECT payload FROM damage_events WHERE session_id=? ORDER BY sequence")
+       defer { sqlite3_finalize(events) }
+-      text(id.uuidString, at: 1, in: events)
++      try text(id.uuidString, at: 1, in: events)
+       var eventStep = sqlite3_step(events)
+       while eventStep == SQLITE_ROW {
+         record.events.append(try JSONDecoder().decode(SavedDamage.self, from: data(events, 0)))
+@@ -200,16 +227,22 @@
+ 
+   func trend(id: UUID) throws -> [DamageTrendPoint] {
+     guard let record = try load(id: id) else { return [] }
++    guard record.snapshot.elapsed.isFinite, record.snapshot.elapsed >= 0 else {
++      throw Failure.database("Invalid battle duration")
++    }
+     let width = max(1, record.snapshot.elapsed / 120)
+     var bins: [Int: Decimal] = [:]
+     let stmt = try statement(
+       "SELECT payload FROM damage_events WHERE session_id=? ORDER BY sequence")
+     defer { sqlite3_finalize(stmt) }
+-    text(id.uuidString, at: 1, in: stmt)
++    try text(id.uuidString, at: 1, in: stmt)
+     var step = sqlite3_step(stmt)
+     while step == SQLITE_ROW {
+       let event = try JSONDecoder().decode(SavedDamage.self, from: data(stmt, 0))
+-      let bin = min(119, max(0, Int(event.elapsed / width)))
++      guard event.elapsed.isFinite, event.elapsed >= 0 else {
++        throw Failure.database("Invalid event timestamp")
++      }
++      let bin = Int(min(119, event.elapsed / width))
+       bins[bin, default: 0] += event.event.damage
+       step = sqlite3_step(stmt)
+     }
+@@ -227,26 +260,38 @@
+     return points
+   }
+ 
+-  func delete(ids: [UUID]?, before: Date? = nil) throws {
++  @discardableResult
++  func delete(ids: [UUID]?, before: Date? = nil) throws -> Set<UUID> {
+     try execute("BEGIN IMMEDIATE")
+     do {
+       let sql =
+         ids != nil
+         ? "DELETE FROM sessions WHERE status!='running' AND id=?"
+         : "DELETE FROM sessions WHERE status!='running' AND started<?"
+-      let stmt = try statement(sql)
++      let stmt = try statement(sql + " RETURNING id")
+       defer { sqlite3_finalize(stmt) }
++      var deleted: Set<UUID> = []
++      func collectDeleted() throws {
++        var step = sqlite3_step(stmt)
++        while step == SQLITE_ROW {
++          guard let id = UUID(uuidString: string(stmt, 0)) else { throw failure() }
++          deleted.insert(id)
++          step = sqlite3_step(stmt)
++        }
++        guard step == SQLITE_DONE else { throw failure() }
++      }
+       if let ids {
+         for id in ids {
+           sqlite3_reset(stmt)
+-          text(id.uuidString, at: 1, in: stmt)
+-          try finish(stmt)
++          try text(id.uuidString, at: 1, in: stmt)
++          try collectDeleted()
+         }
+       } else {
+         sqlite3_bind_double(stmt, 1, (before ?? .distantFuture).timeIntervalSince1970)
+-        try finish(stmt)
++        try collectDeleted()
+       }
+       try execute("COMMIT")
++      return deleted
+     } catch {
+       try? execute("ROLLBACK")
+       throw error
+--- a/macos/HSRDamageMeter/NativeApp/GameDataLibrary.swift
++++ b/macos/HSRDamageMeter/NativeApp/GameDataLibrary.swift
+@@ -1,15 +1,16 @@
+ import AppKit
+ import Foundation
++import ImageIO
+ import LiveDomain
+ import Observation
+ 
+ @MainActor @Observable final class GameDataLibrary {
+-  struct Monster: Codable {
++  struct Monster: Codable, Sendable {
+     let zh: String?
+     let icon: String?
+     let child: [UInt32]?
+   }
+-  struct Archive: Codable {
++  struct Archive: Codable, Sendable {
+     let version: String
+     let characters: Data
+     let monsters: Data
+@@ -20,6 +21,7 @@
+   private var monsters: [String: Monster] = [:]
+   private var aliases: [UInt32: String] = [:]
+   private var images: [String: NSImage] = [:]
++  private var downloads: [String: Task<Data?, Never>] = [:]
+   private let directory: URL
+   private let loader: (@MainActor (URL) async throws -> Data)?
+ 
+@@ -43,7 +45,7 @@
+     }
+   }
+ 
+-  private static func decodeMonsters(_ data: Data) throws -> [String: Monster] {
++  nonisolated private static func decodeMonsters(_ data: Data) throws -> [String: Monster] {
+     let values = try JSONDecoder().decode([String: Monster].self, from: data)
+     guard !values.isEmpty else { throw CocoaError(.coderInvalidValue) }
+     return values
+@@ -72,14 +74,13 @@
+   }
+ 
+   private func fetch(_ url: URL) async throws -> Data {
+-    if let loader { return try await loader(url) }
+-    var request = URLRequest(
+-      url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+-    request.setValue("application/json,text/html,image/webp", forHTTPHeaderField: "Accept")
+-    let (data, response) = try await URLSession.shared.data(for: request)
+-    guard let response = response as? HTTPURLResponse, response.statusCode == 200,
+-      data.count < 25_000_000
+-    else { throw URLError(.badServerResponse) }
++    let data: Data
++    if let loader {
++      data = try await loader(url)
++    } else {
++      data = try await BoundedDownload.fetch(url)
++    }
++    guard data.count < BoundedDownload.byteLimit else { throw URLError(.dataLengthExceedsMaximum) }
+     return data
+   }
+ 
+@@ -102,14 +103,17 @@
+       let base = "https://static.nanoka.cc/hsr/\(latest)/"
+       let characters = try await fetch(URL(string: base + "character.json")!)
+       let monsterData = try await fetch(URL(string: base + "monster.json")!)
+-      let entries = try Self.decodeMonsters(monsterData)
+-      // Validate both datasets before atomically replacing the last usable archive.
+-      try CharacterCatalog.validate(characters)
+-      let archive = Archive(version: latest, characters: characters, monsters: monsterData)
+-      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+-      try JSONEncoder().encode(archive).write(
+-        to: directory.appendingPathComponent("catalog.json"), options: .atomic)
+-      try CharacterCatalog.install(characters)
++      let directory = self.directory
++      let entries = try await Task.detached(priority: .utility) {
++        let entries = try Self.decodeMonsters(monsterData)
++        try CharacterCatalog.validate(characters)
++        let archive = Archive(version: latest, characters: characters, monsters: monsterData)
++        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++        try JSONEncoder().encode(archive).write(
++          to: directory.appendingPathComponent("catalog.json"), options: .atomic)
++        try CharacterCatalog.install(characters)
++        return entries
++      }.value
+       install(entries)
+       version = latest
+       images = [:]
+@@ -121,19 +125,61 @@
+     guard let path = monster(id)?.icon else { return nil }
+     let filename = URL(fileURLWithPath: path).lastPathComponent.replacingOccurrences(
+       of: ".png", with: ".webp")
+-    if let image = images[filename] { return image }
+-    let file = directory.appendingPathComponent("\(version)-\(filename)")
+-    if let image = NSImage(contentsOf: file) {
+-      images[filename] = image
++    let key = "\(version)-\(filename)"
++    let requestedVersion = version
++    if let image = images[key] { return image }
++    let file = directory.appendingPathComponent(key)
++    if let data = try? Data(contentsOf: file, options: .mappedIfSafe),
++      data.count < BoundedDownload.byteLimit, let image = Self.thumbnail(data)
++    {
++      cache(image, key: key)
+       return image
+     }
+-    guard
+-      let url = URL(string: "https://static.nanoka.cc/assets/hsr/monstermiddleicon/\(filename)"),
+-      let data = try? await fetch(url), let image = NSImage(data: data)
++    guard let url = URL(string: "https://static.nanoka.cc/assets/hsr/monstermiddleicon/\(filename)")
+     else { return nil }
+-    try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+-    try? data.write(to: file, options: .atomic)
+-    images[filename] = image
++    let download: Task<Data?, Never>
++    if let pending = downloads[key] {
++      download = pending
++    } else {
++      download = Task { try? await fetch(url) }
++      downloads[key] = download
++    }
++    let data = await download.value
++    downloads[key] = nil
++    guard requestedVersion == version, let data, let image = Self.thumbnail(data) else {
++      return nil
++    }
++    cache(image, key: key)
++    let directory = self.directory
++    await Task.detached(priority: .utility) {
++      try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++      try? data.write(to: file, options: .atomic)
++    }.value
++    guard requestedVersion == version else { return nil }
+     return image
+   }
++
++  private func cache(_ image: NSImage, key: String) {
++    if images.count >= 128, let oldest = images.keys.sorted().first {
++      images.removeValue(forKey: oldest)
++    }
++    images[key] = image
++  }
++
++  static func thumbnail(_ data: Data) -> NSImage? {
++    guard let source = CGImageSourceCreateWithData(data as CFData, nil),
++      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
++      let width = properties[kCGImagePropertyPixelWidth] as? Int,
++      let height = properties[kCGImagePropertyPixelHeight] as? Int,
++      width > 0, height > 0, width <= 16_000_000 / height,
++      let image = CGImageSourceCreateThumbnailAtIndex(
++        source, 0,
++        [
++          kCGImageSourceCreateThumbnailFromImageAlways: true,
++          kCGImageSourceThumbnailMaxPixelSize: 512,
++          kCGImageSourceCreateThumbnailWithTransform: true,
++        ] as CFDictionary)
++    else { return nil }
++    return NSImage(cgImage: image, size: .zero)
++  }
+ }
+--- a/macos/HSRDamageMeter/NativeApp/History/HistoryView.swift
++++ b/macos/HSRDamageMeter/NativeApp/History/HistoryView.swift
+@@ -122,6 +122,7 @@
+     let token = UUID()
+     requestID = token
+     loading = true
++    defer { if requestID == token { loading = false } }
+     error = nil
+     if !more {
+       rows = []
+@@ -137,7 +138,6 @@
+       guard requestID == token else { return }
+       self.error = "无法读取历史记录"
+     }
+-    if requestID == token { loading = false }
+   }
+ 
+   private func applyRetention() async {
+@@ -234,11 +234,12 @@
+       guard let full = try await model.store.historyDetail(id: id, includeEvents: true) else {
+         return
+       }
+-      let encoder = JSONEncoder()
+-      encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+-      encoder.dateEncodingStrategy = .iso8601
+-      let data = try encoder.encode(full)
+-      try await Task.detached { try data.write(to: url, options: .atomic) }.value
++      try await Task.detached(priority: .utility) {
++        let encoder = JSONEncoder()
++        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
++        encoder.dateEncodingStrategy = .iso8601
++        try encoder.encode(full).write(to: url, options: .atomic)
++      }.value
+     } catch { self.error = "导出失败" }
+   }
+ }
+--- a/scripts/build-macos-app.sh
++++ b/scripts/build-macos-app.sh
+@@ -4,7 +4,11 @@
+ package="$root/macos/HSRDamageMeter"
+ swift build --package-path "$package" --product HSRDamageMeter -c release -j 2
+ bin=$(swift build --package-path "$package" -c release --show-bin-path)
+-app="$root/dist/HSR Damage Meter.app"
++destination="$root/dist/HSR Damage Meter.app"
++mkdir -p "$root/dist"
++staging=$(mktemp -d "$root/dist/.app-build.XXXXXX")
++trap 'rm -rf "$staging"' EXIT HUP INT TERM
++app="$staging/HSR Damage Meter.app"
+ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+ sh "$root/scripts/build-app-icon.sh" "$app/Contents/Resources/AppIcon.icns"
+ cp "$root/macos/Assets/MenuBarIcon.png" "$root/macos/Assets/MenuBarIcon@2x.png" "$app/Contents/Resources/"
+@@ -30,5 +34,35 @@
+ <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
+ </dict></plist>
+ PLIST
++# Increment the last installed build number before signing the complete staged bundle.
++/usr/bin/python3 - "$destination" "$app" <<'PYTHON'
++import pathlib, plistlib, sys
++old, new = (pathlib.Path(p) / "Contents/Info.plist" for p in sys.argv[1:])
++number = 0
++if old.exists():
++    with old.open("rb") as file:
++        number = int(plistlib.load(file)["CFBundleVersion"])
++with new.open("rb") as file:
++    info = plistlib.load(file)
++info["CFBundleVersion"] = str(number + 1)
++with new.open("wb") as file:
++    plistlib.dump(info, file)
++PYTHON
+ codesign --force --deep --sign - "$app"
+-printf '%s\n' "$app"
++codesign --verify --deep --strict "$app"
++# Atomic exchange on macOS: a failed build never changes the installed bundle.
++/usr/bin/python3 - "$app" "$destination" <<'PYTHON'
++import ctypes, os, sys
++source, destination = sys.argv[1:]
++if os.path.exists(destination):
++    libc = ctypes.CDLL(None, use_errno=True)
++    rename = libc.renamex_np
++    rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
++    rename.restype = ctypes.c_int
++    if rename(os.fsencode(source), os.fsencode(destination), 2) != 0:
++        code = ctypes.get_errno()
++        raise OSError(code, os.strerror(code))
++else:
++    os.rename(source, destination)
++PYTHON
++printf '%s\n' "$destination"
+--- /dev/null
++++ b/macos/HSRDamageMeter/LiveDomain/HistoryWorker.swift
+@@ -0,0 +1,31 @@
++import Foundation
++
++/// All SQLite work is isolated from the combat reducer and the main actor.
++actor HistoryWorker {
++  private var database: BattleHistoryDatabase?
++
++  func open(_ url: URL) throws {
++    database = try BattleHistoryDatabase(url: url)
++  }
++
++  private func connection() throws -> BattleHistoryDatabase {
++    guard let database else { throw CocoaError(.fileReadUnknown) }
++    return database
++  }
++
++  func save(_ record: BattleRecord) throws { try connection().save(record) }
++
++  func list(search: String, oldestFirst: Bool, offset: Int) throws -> [BattleSummary] {
++    try connection().list(search: search, oldestFirst: oldestFirst, offset: offset)
++  }
++
++  func load(id: UUID, includeEvents: Bool) throws -> BattleRecord? {
++    try connection().load(id: id, includeEvents: includeEvents)
++  }
++
++  func trend(id: UUID) throws -> [DamageTrendPoint] { try connection().trend(id: id) }
++
++  func delete(ids: [UUID]?, before: Date?) throws -> Set<UUID> {
++    try connection().delete(ids: ids, before: before)
++  }
++}
+--- /dev/null
++++ b/macos/HSRDamageMeter/NativeApp/BoundedDownload.swift
+@@ -0,0 +1,48 @@
++import Foundation
++
++enum BoundedDownload {
++  static let byteLimit = 25_000_000
++
++  static func allowed(_ url: URL) -> Bool {
++    url.scheme == "https" && ["hsr.nanoka.cc", "static.nanoka.cc"].contains(url.host ?? "")
++      && url.user == nil && url.password == nil && (url.port == nil || url.port == 443)
++  }
++
++  private final class RedirectPolicy: NSObject, URLSessionTaskDelegate, Sendable {
++    func urlSession(
++      _ session: URLSession, task: URLSessionTask,
++      willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
++      completionHandler: @escaping @Sendable (URLRequest?) -> Void
++    ) {
++      completionHandler(request.url.map { allowed($0) } == true ? request : nil)
++    }
++  }
++
++  // A nonisolated async operation: byte processing never runs on the UI actor.
++  static func fetch(
++    _ url: URL, limit: Int = byteLimit,
++    configuration: URLSessionConfiguration = .ephemeral
++  ) async throws -> Data {
++    guard allowed(url), limit > 0 else { throw URLError(.badURL) }
++    let session = URLSession(
++      configuration: configuration, delegate: RedirectPolicy(), delegateQueue: nil)
++    defer { session.invalidateAndCancel() }
++    var request = URLRequest(
++      url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
++    request.setValue("application/json,text/html,image/webp", forHTTPHeaderField: "Accept")
++    let (bytes, response) = try await session.bytes(for: request)
++    guard let response = response as? HTTPURLResponse, response.statusCode == 200,
++      let finalURL = response.url, allowed(finalURL)
++    else { throw URLError(.badServerResponse) }
++    guard response.expectedContentLength < Int64(limit) else {
++      throw URLError(.dataLengthExceedsMaximum)
++    }
++    var data = Data()
++    for try await byte in bytes {
++      guard data.count < limit - 1 else { throw URLError(.dataLengthExceedsMaximum) }
++      data.append(byte)
++    }
++    try Task.checkCancellation()
++    return data
++  }
++}

@@ -1,0 +1,497 @@
+{
+  "repository": "https://github.com/Mar-7th/StarRailRes",
+  "revision": "d226befe3db13f2ec15f4161d5f34b1b607643fe",
+  "retrievedAt": "2026-09-13",
+  "note": "Game character art remains third-party material. Local package; review redistribution rights before publishing.",
+  "items": [
+    {
+      "id": "1001",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1001.png",
+      "sha256": "ffcd4f65588b0d7103a41e71f375a404f57597e6fecec282b79f167c70ecccf5"
+    },
+    {
+      "id": "1002",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1002.png",
+      "sha256": "f2102ab0fdae15658979d6df9e61235af0c2fe9011b44c466835f83e4d68b6cd"
+    },
+    {
+      "id": "1003",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1003.png",
+      "sha256": "cc3a5cff4b9aed0e18c927e60cb25fe51144fa8f25477da99f27f514fa956b65"
+    },
+    {
+      "id": "1004",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1004.png",
+      "sha256": "836454ce584b4847eebb75933a2d58bc7fa03de035b7a3306e294f1d6bffbcf3"
+    },
+    {
+      "id": "1005",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1005.png",
+      "sha256": "490fd18d97462b88b6559e735b6f696745cd72dc3f43879dd90940f50ded9f80"
+    },
+    {
+      "id": "1006",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1006.png",
+      "sha256": "924300ddce100a799136aa786c6a1aeded9704f5fb895769ba01d6eff7db6908"
+    },
+    {
+      "id": "1008",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1008.png",
+      "sha256": "c7fc190d8f529b114cb8d244326191191f2763e21d2dc452e63e21cb29e9f566"
+    },
+    {
+      "id": "1009",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1009.png",
+      "sha256": "dce21bb3c06f264b6acc9af0d1fa60873e65fd2a5ab2f217aa80328022eaa78a"
+    },
+    {
+      "id": "1013",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1013.png",
+      "sha256": "f008b1e37a8eab59c7c7ede6bcbf451f8b09f18ccf2eb9b010a9597c1e4529ce"
+    },
+    {
+      "id": "1014",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1014.png",
+      "sha256": "d2a874a8aaefd75aa40433ecbceedbce00e4eb52588bb803b9a24dbc7316f46b"
+    },
+    {
+      "id": "1015",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1015.png",
+      "sha256": "2df5afb1461bf110a385d242df8dba440fc5f46689a881931a21c2d5a1f17191"
+    },
+    {
+      "id": "1101",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1101.png",
+      "sha256": "8ac0c4431202cbbafa651660036fa49a15e1c14ca2674c18e9a60ee904db31ca"
+    },
+    {
+      "id": "1102",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1102.png",
+      "sha256": "1cdcf066164758782f977989b3f6c2539ec3df02cf4b5427644e282c57769e2b"
+    },
+    {
+      "id": "1103",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1103.png",
+      "sha256": "271a4b3502da616b33dbbe665f3988df194f3620a2a4457b87159b744daddafd"
+    },
+    {
+      "id": "1104",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1104.png",
+      "sha256": "cff242d83528bc8051b118c1a90ec6a5d6f63091acfaf0e139e8ba0532715f6e"
+    },
+    {
+      "id": "1105",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1105.png",
+      "sha256": "4deb66e861b7b54a683e1a54263f07d5448f06f4323f91d6e801fafdf7a0bb74"
+    },
+    {
+      "id": "1106",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1106.png",
+      "sha256": "87b24cbaa02540ecc1bb85c529e82ded66dbc5dd27a786cedf19e2fa154a666f"
+    },
+    {
+      "id": "1107",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1107.png",
+      "sha256": "f6809c62b85e05914e3507624eabb1939109f9c38f1fde352626f54888cfcba2"
+    },
+    {
+      "id": "1108",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1108.png",
+      "sha256": "f4b35a0b3ac81dab0e3384e0736f95068b7ca3130ae1df5b0cb916db3b7ea377"
+    },
+    {
+      "id": "1109",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1109.png",
+      "sha256": "4582bff28b6c956723cf4a3d72725a1ee68de806da5f54e543d697a397503541"
+    },
+    {
+      "id": "1110",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1110.png",
+      "sha256": "68d9b2575815931130cbdfba38a294f34985d2e3dd9919192fd53be3ea394e13"
+    },
+    {
+      "id": "1111",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1111.png",
+      "sha256": "631fac69c3ee04cb18817dcb122b92e143dbdac80d5b34f2b78c2f798898491c"
+    },
+    {
+      "id": "1112",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1112.png",
+      "sha256": "ac0e8cd86e46a53961986f82ea051e70b53b65777b84bab34bafc12ff53af3ac"
+    },
+    {
+      "id": "1201",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1201.png",
+      "sha256": "518a90b3238644f143c3aa92838ea918c17b79b89f5c80503e608c1fd3f9bfa1"
+    },
+    {
+      "id": "1202",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1202.png",
+      "sha256": "cac6913dde5736f954cac07f8420bfb6254a619e0ee465d407947973004ddda5"
+    },
+    {
+      "id": "1203",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1203.png",
+      "sha256": "55817a6d6a91bb49553ddee399c5489167d633977596e74cb5293bfcca0da751"
+    },
+    {
+      "id": "1204",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1204.png",
+      "sha256": "f7619ab9c2c2937112b82a2392dcc0a853a3aca2ae0030b6a3a6c71fbbc6bc75"
+    },
+    {
+      "id": "1205",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1205.png",
+      "sha256": "8f220009e40c3726c96e3dc269a23dd774e05f85835330fa5dead43c442f1186"
+    },
+    {
+      "id": "1206",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1206.png",
+      "sha256": "7e88bc2e7eca832af3316e10954d2786c3f53db484a2d7273732d3b6f6ad315e"
+    },
+    {
+      "id": "1207",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1207.png",
+      "sha256": "7b0a7fc4376d6cd9a4792240bf5f5e0c1bfaeec20baa751e43a2440994a1862e"
+    },
+    {
+      "id": "1208",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1208.png",
+      "sha256": "2770d31c378a71846a845e9524853fb06c2dfa74be324ae232e65e9b4b1ff9c7"
+    },
+    {
+      "id": "1209",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1209.png",
+      "sha256": "399deabff741710c511cf291ef46a6749285c60f146c7acd5a8d581c2dc46fa3"
+    },
+    {
+      "id": "1210",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1210.png",
+      "sha256": "2eed521539d197918b2a2561aaf04136165c39635a185575264ba788d1fb50ae"
+    },
+    {
+      "id": "1211",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1211.png",
+      "sha256": "749852f92a751191414c160b078ff0d9a298924515a85e93b3f2a99758ae88ae"
+    },
+    {
+      "id": "1212",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1212.png",
+      "sha256": "88d6f7f2519cfb233c52eb3370710a9585a4816a49f21647976b5bd5c70d1357"
+    },
+    {
+      "id": "1213",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1213.png",
+      "sha256": "1247fa9a7c1a3a40829f552d140b5055d6cdba9fecc3db7d81626eda72cfe44e"
+    },
+    {
+      "id": "1214",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1214.png",
+      "sha256": "e909f24031cb6132d91c8808b0037284bdaf0a23ee34b452fd436798688dbae6"
+    },
+    {
+      "id": "1215",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1215.png",
+      "sha256": "0cdaf9167b80bb833b86b0e93d5acd32f1101ab5bb60e975e63bb180b78f05a2"
+    },
+    {
+      "id": "1217",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1217.png",
+      "sha256": "86fd69dff56a316bbdcb95a3a49227233d2e35fd1a6e26d89da60368b89f98e4"
+    },
+    {
+      "id": "1218",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1218.png",
+      "sha256": "4fc8b8f245fd1e059fce78f915c26913b043f4cb6ea7e3f8df0632d0701d1419"
+    },
+    {
+      "id": "1220",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1220.png",
+      "sha256": "23cdb7c65f8f7d69017f43023ff960a30ca40bfd03f0815ab5be42fec4758e40"
+    },
+    {
+      "id": "1221",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1221.png",
+      "sha256": "415c516abf33a71c4857eda1e81c34b3beac06b729bbf2695eb668fd26e59181"
+    },
+    {
+      "id": "1222",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1222.png",
+      "sha256": "5c1a5bd5c6a11bd737153873169b30f3489e6bac04bd7772f7012cb87bb566e2"
+    },
+    {
+      "id": "1223",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1223.png",
+      "sha256": "15f8961cf616c5ddfde02e1ce515c94d7a91642b3466337be4b3d5e460baf0f1"
+    },
+    {
+      "id": "1224",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1224.png",
+      "sha256": "089e61ad04c4cdaf03fb7c8da8d3bdaabccff33b399300d2e30af2614a3f221e"
+    },
+    {
+      "id": "1225",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1225.png",
+      "sha256": "011b92292cb47c48637fe5f59ab2dbd1bd35b606f383d91c6c718218897cdaa3"
+    },
+    {
+      "id": "1301",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1301.png",
+      "sha256": "e627b954ed1550c17fe14ef4b13f9b7768063c0381c1d800e4e763672317b838"
+    },
+    {
+      "id": "1302",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1302.png",
+      "sha256": "2fa9b3516b548d5d882713ec99788e8a9349fc93e42853b1df36e9668757dc81"
+    },
+    {
+      "id": "1303",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1303.png",
+      "sha256": "f7c1e814bb8d21641da3ea16aa3d299dde725233d2d67daafc301ae90ce60d50"
+    },
+    {
+      "id": "1304",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1304.png",
+      "sha256": "00ae9cf0e80578895de8ff1e12b738c7382308761a7089845a52c26fa393b61f"
+    },
+    {
+      "id": "1305",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1305.png",
+      "sha256": "6786e559217559a802ed1be18554d036dd2c4148524dfaf6b988ba8ab11b7ccc"
+    },
+    {
+      "id": "1306",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1306.png",
+      "sha256": "850a8137efd8205c89f24319bce6689c4cad4733a54b7fe090827d0f11906349"
+    },
+    {
+      "id": "1307",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1307.png",
+      "sha256": "501b888214628018acae2e40798bbb93ea71226f1415a9aea0d6d214a0b470c0"
+    },
+    {
+      "id": "1308",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1308.png",
+      "sha256": "7c298350da7f6a56a51ff33c2f43680ac7d449098ca7bec12cbefd629f7ad5f3"
+    },
+    {
+      "id": "1309",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1309.png",
+      "sha256": "a5c0eddadb50a5c48d94d66817837fa2f9d17c2cec19f727c65be6a6117661e4"
+    },
+    {
+      "id": "1310",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1310.png",
+      "sha256": "b1bbb0b902e3afa44ae1ae638ffcbe75cb207fb5beb7843dc758a5bcf33b8f50"
+    },
+    {
+      "id": "1312",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1312.png",
+      "sha256": "1d15f481207b4fe85b6204b114f1ecc34edafcfac547c5a6cfcf45eec7f5921f"
+    },
+    {
+      "id": "1313",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1313.png",
+      "sha256": "a3c37f72260fccd449901a02e11acee742bf8a0c42df18fdefa8f33618b53595"
+    },
+    {
+      "id": "1314",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1314.png",
+      "sha256": "638422afaf4471a572dfc69af7052680aaf1c7df0493a4059f865154f96f6d47"
+    },
+    {
+      "id": "1315",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1315.png",
+      "sha256": "6848d9acd788079146edf7f0d4ca1414ba81fc78178ca834ca4d1b7813777a8e"
+    },
+    {
+      "id": "1317",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1317.png",
+      "sha256": "18d709b133bee7583b0d7166f16adecad6bbe44253cc45e3a9f120bc0f823d27"
+    },
+    {
+      "id": "1321",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1321.png",
+      "sha256": "b6f23d51121d3f61ff6c6c6ef1552e67ba2f62c891dd9a9ac239be9e3ade67dc"
+    },
+    {
+      "id": "1401",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1401.png",
+      "sha256": "36c3ed916d41256df452079a481af556ea0b4a9c8b623bda3be1e3bb87061f94"
+    },
+    {
+      "id": "1402",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1402.png",
+      "sha256": "18fbf49957bf10b624d6eac12c689a92ad0b8304958d1c639fdabce32ae96d15"
+    },
+    {
+      "id": "1403",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1403.png",
+      "sha256": "561deb640ec1b7d72d7fe241e000835ec684738d81e2e0972bd8e7b70d31f5e0"
+    },
+    {
+      "id": "1404",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1404.png",
+      "sha256": "72352304e78791856a8834e110707b5fc923cbc327fd1a396d460d574e0f3510"
+    },
+    {
+      "id": "1405",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1405.png",
+      "sha256": "274a91046af243e8a553eb38f7e0def20426c6b4df2a1287a03f91e24e194f85"
+    },
+    {
+      "id": "1406",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1406.png",
+      "sha256": "44c0499508c1f12fcb722935ada5a64685171a83b211e05e45aadfe2542e8acb"
+    },
+    {
+      "id": "1407",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1407.png",
+      "sha256": "082294aec5cee39a6a69ab80f690eec55dd5dec157d3f838d3ee08034802b8d7"
+    },
+    {
+      "id": "1408",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1408.png",
+      "sha256": "af9b2983514b3abe4ea92913184fdd466e636b84928576381dab0e0d3ee10981"
+    },
+    {
+      "id": "1409",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1409.png",
+      "sha256": "c09a39c7494bbf88df2750efd70ee7906c50a30a24a05b6e5d6296f90abd3d56"
+    },
+    {
+      "id": "1410",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1410.png",
+      "sha256": "080faaa09d90ec04516acb9d0f2dd9c1c9547f36cba5882928707da54abde52a"
+    },
+    {
+      "id": "1412",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1412.png",
+      "sha256": "15f990307518d2c0d41d1dbef9c6785d9c868c76a5aad67587350aec2aca98b3"
+    },
+    {
+      "id": "1413",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1413.png",
+      "sha256": "286c88377b24beb20b8cdd3bdcdca393e012537ae054729807b65f8c35a0a4b8"
+    },
+    {
+      "id": "1414",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1414.png",
+      "sha256": "4990b7bf0fe47415e05313a7e0e94652674b1d4602b1e62865e39c243fcef179"
+    },
+    {
+      "id": "1415",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1415.png",
+      "sha256": "db58c1e7d83f93a76d7ab386eda5ea6a9d120f26901c8912af9deef6859c8714"
+    },
+    {
+      "id": "1501",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1501.png",
+      "sha256": "200523150423a5fbf3445a822d91b47e7348b183c85b3b9c8aed4a1dacc40025"
+    },
+    {
+      "id": "1502",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1502.png",
+      "sha256": "f3c989cd790eb4aeaf7910665d7a399b3e45db5b930b85621801be56893a13fe"
+    },
+    {
+      "id": "1503",
+      "missing": true
+    },
+    {
+      "id": "1504",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1504.png",
+      "sha256": "6f8f52b30a50a7430b691ef015fb98f32524945a47c955607087f9e8bf3bc0ae"
+    },
+    {
+      "id": "1505",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1505.png",
+      "sha256": "16946ad4a54cbac627b2325f1f84948212c898108189dc285b42eab41c6e2ad1"
+    },
+    {
+      "id": "1506",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1506.png",
+      "sha256": "14fcd102ec3a215d47d084017d22d00d792fc9d43c454f823b86bd00e5c41cea"
+    },
+    {
+      "id": "1507",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1507.png",
+      "sha256": "bcef6feebc003bef7455e4420a1c82d6f071ea16fbff4afdc634b7094f1df9c2"
+    },
+    {
+      "id": "1508",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1508.png",
+      "sha256": "4d3ed85fac432e04143605968f9e3e16f81182e4dd8de6eccf9a2ebbae307931"
+    },
+    {
+      "id": "1509",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1509.png",
+      "sha256": "7eea05d1f1e34ce2e678d1b9305101e0b246e5b1b6ca67f7ad78e8b312b60198"
+    },
+    {
+      "id": "1510",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1510.png",
+      "sha256": "b6524f5ad39aacdf4607a9762b5fe933e80a025748a9cdde6b9b2b636c9a59de"
+    },
+    {
+      "id": "1512",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1512.png",
+      "sha256": "af6b4b08dfcc7a78576a0da3a57cbf0fca8c8bd3d17d5260f65d10eeb5e9c988"
+    },
+    {
+      "id": "1513",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/1513.png",
+      "sha256": "0ef8bb49af35546408cc1e24a3faa6e116f43ae4f35b537ba87658465db72347"
+    },
+    {
+      "id": "8001",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8001.png",
+      "sha256": "5089e473e31d0b24e67cec3546cfd4e3c5fb40d982eab9560134c6ecd6aedaf9"
+    },
+    {
+      "id": "8002",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8002.png",
+      "sha256": "b986cea1eea406367b330789022d63877567bac48a65d659da75fd795e8f7dda"
+    },
+    {
+      "id": "8003",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8003.png",
+      "sha256": "79f52e4db13bc8d7260a6c1ba939997b839474247cd18fbfe97411eb6043254b"
+    },
+    {
+      "id": "8004",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8004.png",
+      "sha256": "592e8ac028ac202cf83a667fcb9f28d4ed24d937b75a2ebc32215f365359f102"
+    },
+    {
+      "id": "8005",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8005.png",
+      "sha256": "a4da4c9c144049428f538c7d34763adfc89e3cca57439eb93c2a6e20907f3745"
+    },
+    {
+      "id": "8006",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8006.png",
+      "sha256": "df14a7ecbd5552ad809f4c5d78182d056db6608ac123d58c704720c2e1eb5224"
+    },
+    {
+      "id": "8007",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8007.png",
+      "sha256": "8de15ce22c9c354851b8fcc9f40ef1ece364beb76c587e65d20941fc5523d068"
+    },
+    {
+      "id": "8008",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8008.png",
+      "sha256": "09451d4c7824c1444e741161a8a10415c17a454c19f83502d733edec325b516f"
+    },
+    {
+      "id": "8009",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8009.png",
+      "sha256": "186b5f2ddc667498ccb64f7dc206c18efc862aa1b26fea4d760ccb4c3df3aa9e"
+    },
+    {
+      "id": "8010",
+      "url": "https://raw.githubusercontent.com/Mar-7th/StarRailRes/d226befe3db13f2ec15f4161d5f34b1b607643fe/icon/avatar/8010.png",
+      "sha256": "a6b21e961c8eee60d10133b64d6051db6db5ad1baedb129fa72191e9d83db2da"
+    }
+  ]
+}

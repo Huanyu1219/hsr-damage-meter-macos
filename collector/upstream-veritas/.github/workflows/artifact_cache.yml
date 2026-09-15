@@ -1,0 +1,25 @@
+name: Artifact Cache
+
+on:
+  push:
+    branches:
+      - main  # Replace with your default branch if needed
+    paths:
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - 'rust-toolchain.toml'
+
+jobs:
+  cache:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2025-05-17
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo build --release

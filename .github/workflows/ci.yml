@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift format
+        run: xcrun swift-format lint --strict --recursive macos/HSRDamageMeter
+      - name: Swift tests
+        run: swift test --package-path macos/HSRDamageMeter -j 2
+      - name: Build app
+        run: ./scripts/build-macos-app.sh
+
+  rust-and-schema:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          components: rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/requirements-validation.lock
+      - name: Install schema validator
+        run: python -m pip install -r scripts/requirements-validation.lock
+      - name: Rust format
+        run: cargo fmt --manifest-path collector/Cargo.toml --all -- --check
+      - name: Rust tests
+        run: cargo test --manifest-path collector/Cargo.toml --locked
+      - name: Validate protocol fixtures
+        run: python scripts/validate-fixtures.py
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "envelope.schema.json",
+  "type": "object",
+  "properties": {
+    "protocolVersion": {
+      "const": 1,
+      "type": "integer"
+    },
+    "type": {
+      "enum": [
+        "hello",
+        "combat_start",
+        "combat_end",
+        "party_update",
+        "damage"
+      ]
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807
+    },
+    "timestamp": {
+      "type": "number",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "protocolVersion",
+    "type",
+    "sequence",
+    "timestamp",
+    "payload"
+  ],
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "hello"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "hello.schema.json#/$defs/Hello"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "combat_start"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "session.schema.json#/$defs/CombatStart"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "combat_end"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "session.schema.json#/$defs/CombatEnd"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "party_update"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "party.schema.json#/$defs/PartyUpdate"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "damage"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "damage.schema.json#/$defs/Damage"
+          }
+        }
+      }
+    }
+  ]
+}

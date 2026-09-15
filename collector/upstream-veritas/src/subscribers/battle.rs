@@ -1,0 +1,1499 @@
+use crate::battle::BattleContext;
+use crate::kreide::helpers::*;
+use crate::kreide::types::*;
+use crate::kreide::*;
+
+use crate::models::events::*;
+use crate::models::types::Avatar;
+use crate::models::types::BattleStats;
+use crate::models::types::Enemy;
+use crate::models::types::Entity;
+use crate::models::types::Property;
+use crate::models::types::Team;
+
+use anyhow::Result;
+use anyhow::{Error, anyhow};
+use function_name::named;
+use il2cpp_runtime::Il2CppClass;
+use il2cpp_runtime::Il2CppObject;
+use il2cpp_runtime::System_RuntimeType;
+use il2cpp_runtime::api::il2cpp_class_get_fields;
+use il2cpp_runtime::api::il2cpp_field_get_name;
+use il2cpp_runtime::api::il2cpp_field_get_offset;
+use il2cpp_runtime::api::il2cpp_field_get_type;
+use il2cpp_runtime::get_cached_class;
+use il2cpp_runtime::types::Il2CppString;
+use il2cpp_runtime::types::System_Enum;
+use il2cpp_runtime::types::System_Int32__Boxed;
+use std::collections::HashMap;
+use std::ffi::c_void;
+use std::ptr::null;
+use std::str::FromStr;
+use std::sync::OnceLock;
+
+#[named]
+unsafe fn get_elapsed_av(game_mode: RPG_GameCore_TurnBasedGameMode) -> Result<f64> {
+    log::debug!(function_name!());
+    Ok(unsafe {
+        game_mode
+            ._ElapsedActionDelay_k__BackingField()?
+            .to_double()?
+            * 10.
+    })
+}
+
+#[derive(Clone, Copy)]
+struct ComboFieldOffsets {
+    turn_based_ability_component: usize,
+    skill_character_component: usize,
+    ability_name_outer: usize,
+    ability_name_inner: usize,
+}
+
+static COMBO_FIELD_OFFSETS: OnceLock<ComboFieldOffsets> = OnceLock::new();
+
+fn parse_il2cpp_enum<TObj, TEnum>(enum_obj: TObj) -> Result<TEnum>
+where
+    TObj: Il2CppObject,
+    TEnum: FromStr,
+    <TEnum as FromStr>::Err: std::fmt::Display,
+{
+    let ty = helpers::get_type_handle(enum_obj.get_class().qualified_name())?;
+    let name = unsafe { System_Enum::get_name(ty, enum_obj.as_ptr()) }?;
+    let name = name.to_string();
+
+    TEnum::from_str(&name).map_err(|e| {
+        anyhow!(
+            "Failed to parse enum '{}' as {}: {}",
+            name,
+            std::any::type_name::<TEnum>(),
+            e
+        )
+    })
+}
+
+unsafe fn resolve_combo_field_offsets(class: Il2CppClass) -> Result<ComboFieldOffsets> {
+    let field_iter_1: *const c_void = null();
+    let mut turn_based_ability_component_offset = None;
+    let mut skill_character_component_offset = None;
+    let mut ability_name_outer_offset = None;
+    let mut ability_name_inner_offset = None;
+
+    loop {
+        let field = il2cpp_class_get_fields(class, &field_iter_1);
+        if field.0.is_null() {
+            break;
+        }
+
+        let field_type = il2cpp_field_get_type(field);
+        if field_type.name() == RPG_GameCore_TurnBasedAbilityComponent::ffi_name() {
+            turn_based_ability_component_offset = Some(il2cpp_field_get_offset(field) as usize);
+        } else if field_type.name() == RPG_GameCore_SkillCharacterComponent::ffi_name() {
+            skill_character_component_offset = Some(il2cpp_field_get_offset(field) as usize);
+        } else if is_obfuscated_name(field_type.name()) {
+            ability_name_outer_offset = Some(il2cpp_field_get_offset(field) as usize);
+
+            let field_iter_2: *const c_void = null();
+            loop {
+                let field_inner = il2cpp_class_get_fields(field_type.class(), &field_iter_2);
+                if field_inner.0.is_null() {
+                    break;
+                }
+
+                let field_inner_type = il2cpp_field_get_type(field_inner);
+                if field_inner_type.name() == Il2CppString::ffi_name() {
+                    ability_name_inner_offset = Some(il2cpp_field_get_offset(field_inner) as usize);
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(ComboFieldOffsets {
+        turn_based_ability_component: turn_based_ability_component_offset
+            .context("Failed to find TurnBasedAbilityComponent field offset")?,
+        skill_character_component: skill_character_component_offset
+            .context("Failed to find SkillCharacterComponent field offset")?,
+        ability_name_outer: ability_name_outer_offset
+            .context("Failed to find obfuscated ability-name container field offset")?,
+        ability_name_inner: ability_name_inner_offset
+            .context("Failed to find Il2CppString ability-name field offset")?,
+    })
+}
+
+unsafe fn get_combo_field_offsets(class: Il2CppClass) -> Result<ComboFieldOffsets> {
+    if let Some(offsets) = COMBO_FIELD_OFFSETS.get() {
+        return Ok(*offsets);
+    }
+
+    let offsets = unsafe { resolve_combo_field_offsets(class)? };
+    let _ = COMBO_FIELD_OFFSETS.set(offsets);
+    COMBO_FIELD_OFFSETS
+        .get()
+        .copied()
+        .ok_or_else(|| anyhow!("Failed to cache on_combo field offsets"))
+}
+
+unsafe fn resolve_attack_type_offset(class: Il2CppClass) -> Result<usize> {
+    let field_iter: *const c_void = null();
+    loop {
+        log::debug!("{}", class.qualified_name());
+        let field = il2cpp_class_get_fields(get_cached_class(class.qualified_name())?, &field_iter);
+        if field.0.is_null() {
+            break;
+        }
+
+        let field_type = il2cpp_field_get_type(field);
+        if field_type.name() == "RPG.GameCore.AttackType" {
+            return Ok(il2cpp_field_get_offset(field) as usize);
+        }
+    }
+
+    Err(anyhow!(
+        "Failed to find RPG.GameCore.AttackType field offset in damage info"
+    ))
+}
+
+unsafe fn get_attack_type_offset(class: Il2CppClass) -> Result<usize> {
+    static ATTACK_TYPE_OFFSET: OnceLock<usize> = OnceLock::new();
+    if let Some(offset) = ATTACK_TYPE_OFFSET.get() {
+        return Ok(*offset);
+    }
+
+    let offset = unsafe { resolve_attack_type_offset(class)? };
+    let _ = ATTACK_TYPE_OFFSET.set(offset);
+    ATTACK_TYPE_OFFSET
+        .get()
+        .copied()
+        .ok_or_else(|| anyhow!("Failed to cache attack type offset"))
+}
+
+
+#[named]
+fn on_damage(
+    instance: *const c_void,
+    damage_data: *const c_void,
+    attack_data: *const c_void,
+    ability_id: Il2CppString,
+    attacker_entity: RPG_GameCore_GameEntity,
+    defender_entity: RPG_GameCore_GameEntity,
+    damage: RPG_GameCore_FixPoint,
+    stance_damage: RPG_GameCore_FixPoint,
+    stance_element_ratio: RPG_GameCore_FixPoint,
+    custom_name: Il2CppString
+) -> *const c_void {
+    log::debug!(function_name!());
+    let res = ON_DAMAGE_Detour.call(
+        instance,
+        damage_data,
+        attack_data,
+        ability_id,
+        attacker_entity,
+        defender_entity,
+        damage,
+        stance_damage,
+        stance_element_ratio,
+        custom_name
+    );
+    safe_call!(unsafe {
+        let mut event: Option<Result<Event>> = None;
+        let attacker_ability = match System_RuntimeType::from_name(
+            RPG_GameCore_TurnBasedAbilityComponent::ffi_name()
+        ) {
+            Ok(attacker_ability_type) => match unsafe { attacker_entity.get_component(attacker_ability_type) } {
+                Ok(attacker_ability) => RPG_GameCore_TurnBasedAbilityComponent(attacker_ability.0),
+                Err(e) => {
+                    log::error!("{} attacker ability lookup error: {}", function_name!(), e);
+                    RPG_GameCore_TurnBasedAbilityComponent(null())
+                }
+            },
+            Err(e) => {
+                log::error!("{} attacker ability type error: {}", function_name!(), e);
+                RPG_GameCore_TurnBasedAbilityComponent(null())
+            }
+        };
+        let defender_ability = match System_RuntimeType::from_name(
+        RPG_GameCore_TurnBasedAbilityComponent::ffi_name()
+        ) {
+            Ok(defender_ability_type) => match unsafe { defender_entity.get_component(defender_ability_type) } {
+                Ok(defender_ability) => RPG_GameCore_TurnBasedAbilityComponent(defender_ability.0),
+                Err(e) => {
+                    log::error!("{} defender ability lookup error: {}", function_name!(), e);
+                    RPG_GameCore_TurnBasedAbilityComponent(null())
+                }
+            },
+            Err(e) => {
+                log::error!("{} defender ability type error: {}", function_name!(), e);
+                RPG_GameCore_TurnBasedAbilityComponent(null())
+            }
+        };
+
+        let attacker_team_value: RPG_GameCore_TeamType = parse_il2cpp_enum(attacker_entity._Team()?)?;
+        match attacker_team_value {
+            RPG_GameCore_TeamType::TeamLight => {
+                let hp_initial = {
+                    let value = *System_Int32__Boxed(System_Enum::parse(
+                        get_type_handle("RPG.GameCore.AbilityProperty")?,
+                        Il2CppString::new(RPG_GameCore_AbilityProperty::CurrentHP.to_string())?,
+                    )?);
+
+                    defender_ability.get_property(std::mem::transmute(value.0))?.to_double()?
+                };
+                let damage = damage.to_double()?;
+                let overkill_damage = if damage > hp_initial {
+                    damage - hp_initial
+                } else {
+                    0.0
+                };
+                
+
+                let r#type = {
+                    let attack_type_offset =
+                        get_attack_type_offset(Il2CppClass(*(damage_data as *const *const c_void)))?;
+
+                    let damage_type =
+                        *(damage_data.byte_offset(attack_type_offset as isize) as *const i32);
+                    let boxed = RPG_GameCore_AttackType__Boxed(System_Enum::to_object_from_int(
+                        get_type_handle("RPG.GameCore.AttackType")?,
+                        damage_type,
+                    )?);
+                    System_Enum::get_name(get_type_handle("RPG.GameCore.AttackType")?, boxed.0)?
+                        .to_string()
+                };
+
+                let attack_owner = {
+                    let attack_owner = RPG_GameCore_AbilityStatic::get_actual_owner(attacker_entity)?;
+                    if !attack_owner.0.is_null() {
+                        attack_owner
+                    } else {
+                        attacker_entity
+                    }
+                };
+
+                let attack_owner_entity_value: RPG_GameCore_EntityType =
+                    parse_il2cpp_enum(attack_owner._EntityType()?)?;
+
+                match attack_owner_entity_value {
+                    RPG_GameCore_EntityType::Avatar => {
+                        let e = match helpers::get_avatar_from_entity(attack_owner) {
+                            Ok(avatar) => Ok(Event::OnDamage(OnDamageEvent {
+                                attacker: Entity {
+                                    uid: avatar.id,
+                                    team: Team::Player,
+                                },
+                                damage,
+                                overkill_damage,
+                                r#type,
+                            })),
+                            Err(e) => {
+                                log::error!("Avatar Event Error: {}", e);
+                                Err(anyhow!("{} Avatar Event Error: {}", function_name!(), e))
+                            }
+                        };
+                        event = Some(e);
+                    }
+                    RPG_GameCore_EntityType::Servant => {
+                        let character_data_comp = attacker_ability._CharacterDataRef()?;
+                        let e = match helpers::get_avatar_from_entity(
+                            character_data_comp.Summoner()?,
+                        ) {
+                            Ok(avatar) => Ok(Event::OnDamage(OnDamageEvent {
+                                attacker: Entity {
+                                    uid: avatar.id,
+                                    team: Team::Player,
+                                },
+                                damage,
+                                overkill_damage,
+                                r#type,
+                            })),
+                            Err(e) => {
+                                log::error!("Servant Event Error: {}", e);
+                                Err(anyhow!("{} Servant Event Error: {}", function_name!(), e))
+                            }
+                        };
+                        event = Some(e);
+                    }
+                    RPG_GameCore_EntityType::Snapshot => {
+                        // Unsure if this is if only a servant died and inflicted a DOT
+                        let character_data_comp = attacker_ability._CharacterDataRef()?;
+                        let e = match helpers::get_avatar_from_entity(
+                            character_data_comp.Summoner()?,
+                        ) {
+                            Ok(avatar) => Ok(Event::OnDamage(OnDamageEvent {
+                                attacker: Entity {
+                                    uid: avatar.id,
+                                    team: Team::Player,
+                                },
+                                damage,
+                                overkill_damage,
+                                r#type,
+                            })),
+                            Err(e) => {
+                                log::error!("Snapshot Event Error: {}", e);
+                                Err(anyhow!("{} Snapshot Event Error: {}", function_name!(), e))
+                            }
+                        };
+                        event = Some(e);
+                    }
+                    _ => {
+                        let variant = System_Enum::get_name(
+                            get_type_handle("RPG.GameCore.EntityType")?,
+                            attacker_entity._EntityType()?.0,
+                        )?
+                        .to_string();
+
+                        log::warn!("Light entity type {} was not matched", variant)
+                    }
+                }
+            }
+            _ => {}
+        }
+        if let Some(event) = event {
+            BattleContext::handle_event(event);
+        }
+        Ok(())
+    });
+
+    res
+}
+
+// Called when a manual skill is used. Does not account for insert skills (out of turn automatic skills)
+#[named]
+fn on_use_skill(
+    instance: RPG_GameCore_SkillCharacterComponent,
+    skill_index: i32,
+    a3: *const c_void,
+    a4: bool,
+    a5: *const c_void,
+    a6: *const c_void,
+    skill_extra_use_param: i32,
+) -> bool {
+    log::debug!(function_name!());
+    let res =
+        ON_USE_SKILL_Detour.call(instance, skill_index, a3, a4, a5, a6, skill_extra_use_param);
+
+    safe_call!(unsafe {
+        let entity = instance.as_base()._OwnerRef()?;
+        let skill_owner = {
+            let skill_owner = RPG_GameCore_AbilityStatic::get_actual_owner(entity)?;
+            if !skill_owner.0.is_null() {
+                skill_owner
+            } else {
+                entity
+            }
+        };
+
+        let mut event: Option<Result<Event>> = None;
+        let skill_owner_team_value: RPG_GameCore_TeamType =
+            parse_il2cpp_enum(skill_owner._Team()?)?;
+
+        match skill_owner_team_value {
+            RPG_GameCore_TeamType::TeamLight => {
+                let skill_data = instance.get_skill_data(skill_index, skill_extra_use_param)?;
+
+                if !skill_data.0.is_null() {
+                    let entity_value: RPG_GameCore_EntityType =
+                        parse_il2cpp_enum(skill_owner._EntityType()?)?;
+                    match entity_value {
+                        RPG_GameCore_EntityType::Avatar => {
+                            let e = (|| -> Result<Option<Event>> {
+                                let avatar = get_avatar_from_entity(skill_owner).map_err(|e| {
+                                    log::error!("Avatar Event Error: {}", e);
+                                    anyhow!("{} Avatar Event Error: {}", function_name!(), e)
+                                })?;
+
+                                let skill = get_skill_from_skilldata(skill_data).map_err(|e| {
+                                    log::error!("Avatar Event Error: {}", e);
+                                    anyhow!("{} Avatar Skill Event Error: {}", function_name!(), e)
+                                })?;
+
+                                if skill.name.is_empty() {
+                                    return Ok(None);
+                                }
+
+                                Ok(Some(Event::OnUseSkill(OnUseSkillEvent {
+                                    avatar: Entity {
+                                        uid: avatar.id,
+                                        team: Team::Player,
+                                    },
+                                    skill,
+                                })))
+                            })();
+                            match e {
+                                Ok(Some(e)) => event = Some(Ok(e)),
+                                Ok(None) => {}
+                                Err(e) => event = Some(Err(e)),
+                            }
+                        }
+                        RPG_GameCore_EntityType::Servant => {
+                            let e = (|| -> Result<Event> {
+                                let avatar = get_avatar_from_entity(
+                                    instance._CharacterDataRef()?.Summoner()?,
+                                )
+                                .map_err(|e| {
+                                    log::error!("Servant Event Error: {}", e);
+                                    anyhow!("{} Servant Event Error: {}", function_name!(), e)
+                                })?;
+
+                                let skill = get_skill_from_skilldata(skill_data).map_err(|e| {
+                                    log::error!("Servant Skill Error: {}", e);
+                                    anyhow!("{} Servant Skill Event Error: {}", function_name!(), e)
+                                })?;
+
+                                Ok(Event::OnUseSkill(OnUseSkillEvent {
+                                    avatar: Entity {
+                                        uid: avatar.id,
+                                        team: Team::Player,
+                                    },
+                                    skill,
+                                }))
+                            })();
+                            event = Some(e);
+                        }
+                        RPG_GameCore_EntityType::BattleEvent => {
+                            // let battle_event_data_comp = RPG_GameCore_BattleEventDataComponent(
+                            //     instance._CharacterDataRef()?.Summoner()?,
+                            // );
+
+                            // let avatar_entity =
+                            //     battle_event_data_comp._SourceCaster_k__BackingField()?;
+                            let avatar_entity = instance._CharacterDataRef()?.Summoner()?;
+
+                            let e = match get_skill_from_skilldata(skill_data) {
+                                Ok(skill) => match get_avatar_from_entity(avatar_entity) {
+                                    Ok(avatar) => Ok(Event::OnUseSkill(OnUseSkillEvent {
+                                        avatar: Entity {
+                                            uid: avatar.id,
+                                            team: Team::Player,
+                                        },
+                                        skill,
+                                    })),
+                                    Err(e) => {
+                                        log::error!("Summon Event Error: {}", e);
+                                        Err(anyhow!(
+                                            "{} Summon Event Error: {}",
+                                            function_name!(),
+                                            e
+                                        ))
+                                    }
+                                },
+                                Err(e) => {
+                                    log::error!("Summon Skill Event Error: {}", e);
+                                    Err(anyhow!(
+                                        "{} Summon Skill Event Error: {}",
+                                        function_name!(),
+                                        e
+                                    ))
+                                }
+                            };
+                            event = Some(e);
+                        }
+                        _ => {
+                            let variant = System_Enum::get_name(
+                                get_type_handle("RPG.GameCore.EntityType")?,
+                                skill_owner._EntityType()?.0,
+                            )?
+                            .to_string();
+
+                            log::warn!("Light entity type {} was not matched", variant)
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        if let Some(event) = event {
+            BattleContext::handle_event(event);
+        }
+        Ok(())
+    });
+
+    res
+}
+
+// Insert skills are out of turn automatic skills
+#[named]
+fn on_combo(instance: *const c_void, game_mode: RPG_GameCore_TurnBasedGameMode) {
+    log::debug!(function_name!());
+
+    ON_COMBO_Detour.call(instance, game_mode);
+    safe_call!(unsafe {
+        if instance.is_null() {
+            return Err(anyhow!("on_combo received null instance pointer"));
+        }
+
+        let instance_class_ptr = *(instance as *const *const c_void);
+        if instance_class_ptr.is_null() {
+            return Err(anyhow!("on_combo instance has null class pointer"));
+        }
+
+        let offsets = get_combo_field_offsets(Il2CppClass(instance_class_ptr))?;
+
+        let turn_based_ability_component_ptr = *((instance
+            .byte_offset(offsets.turn_based_ability_component as isize))
+            as *const *const c_void);
+        if turn_based_ability_component_ptr.is_null() {
+            return Err(anyhow!(
+                "on_combo resolved null TurnBasedAbilityComponent pointer"
+            ));
+        }
+        let turn_based_ability_component =
+            RPG_GameCore_TurnBasedAbilityComponent(turn_based_ability_component_ptr);
+
+        let skill_character_component_ptr = *((instance
+            .byte_offset(offsets.skill_character_component as isize))
+            as *const *const c_void);
+        if skill_character_component_ptr.is_null() {
+            return Err(anyhow!(
+                "on_combo resolved null SkillCharacterComponent pointer"
+            ));
+        }
+        let skill_character_component =
+            RPG_GameCore_SkillCharacterComponent(skill_character_component_ptr);
+
+        let ability_name_container =
+            *((instance.byte_offset(offsets.ability_name_outer as isize)) as *const *const c_void);
+        if ability_name_container.is_null() {
+            return Err(anyhow!("on_combo resolved null ability name container"));
+        }
+
+        let ability_name_ptr = *(ability_name_container
+            .byte_offset(offsets.ability_name_inner as isize)
+            as *const *const c_void);
+        if ability_name_ptr.is_null() {
+            return Err(anyhow!("on_combo resolved null ability name"));
+        }
+
+        let ability_name = Il2CppString(ability_name_ptr);
+
+        let entity = skill_character_component.as_base()._OwnerRef()?;
+        let skill_owner = {
+            let skill_owner = RPG_GameCore_AbilityStatic::get_actual_owner(entity)?;
+            if !skill_owner.0.is_null() {
+                skill_owner
+            } else {
+                entity
+            }
+        };
+
+        let mut event: Option<Result<Event>> = None;
+        let skill_owner_team_value: RPG_GameCore_TeamType =
+            parse_il2cpp_enum(skill_owner._Team()?)?;
+
+        match skill_owner_team_value {
+            RPG_GameCore_TeamType::TeamLight => {
+                let skill_name =
+                    turn_based_ability_component.get_ability_mapped_skill(ability_name)?;
+
+                let character_data_ref = turn_based_ability_component._CharacterDataRef()?;
+                let character_config = character_data_ref._JsonConfig_k__BackingField()?;
+                let skill_index = character_config.get_skill_index_by_trigger_key(skill_name)?;
+                let skill_data = skill_character_component.get_skill_data(skill_index, -1)?;
+
+                if !skill_data.0.is_null() {
+                    let entity_value: RPG_GameCore_EntityType =
+                        parse_il2cpp_enum(skill_owner._EntityType()?)?;
+
+                    match entity_value {
+                        RPG_GameCore_EntityType::Avatar => {
+                            let e: std::result::Result<Event, anyhow::Error> =
+                                match get_skill_from_skilldata(skill_data) {
+                                    Ok(skill) => match get_avatar_from_entity(skill_owner) {
+                                        Ok(avatar) => {
+                                            if skill.name.is_empty() {
+                                                return Ok(());
+                                            }
+                                            Ok(Event::OnUseSkill(OnUseSkillEvent {
+                                                avatar: Entity {
+                                                    uid: avatar.id,
+                                                    team: Team::Player,
+                                                },
+                                                skill,
+                                            }))
+                                        }
+                                        Err(e) => {
+                                            log::error!("Avatar Event Error: {}", e);
+                                            Err(anyhow!(
+                                                "{} Avatar Event Error: {}",
+                                                function_name!(),
+                                                e
+                                            ))
+                                        }
+                                    },
+                                    Err(e) => {
+                                        log::error!("Avatar Combo Skill Event Error: {}", e);
+                                        Err(anyhow!(
+                                            "{} Avatar Combo Skill Event Error: {}",
+                                            function_name!(),
+                                            e
+                                        ))
+                                    }
+                                };
+                            event = Some(e);
+                        }
+                        RPG_GameCore_EntityType::Servant => {
+                            let e = match get_skill_from_skilldata(skill_data) {
+                                Ok(skill) => match get_avatar_from_servant_entity(skill_owner) {
+                                    Ok(avatar) => Ok(Event::OnUseSkill(OnUseSkillEvent {
+                                        avatar: Entity {
+                                            uid: avatar.id,
+                                            team: Team::Player,
+                                        },
+                                        skill,
+                                    })),
+                                    Err(e) => {
+                                        log::error!("Servant Event Error: {}", e);
+                                        Err(anyhow!(
+                                            "{} Servant Event Error: {}",
+                                            function_name!(),
+                                            e
+                                        ))
+                                    }
+                                },
+                                Err(e) => {
+                                    log::error!("Servant Skill Event Error: {}", e);
+                                    Err(anyhow!(
+                                        "{} Servant Skill Event Error: {}",
+                                        function_name!(),
+                                        e
+                                    ))
+                                }
+                            };
+                            event = Some(e);
+                        }
+                        RPG_GameCore_EntityType::BattleEvent => {
+                            let battle_event_data_comp = RPG_GameCore_BattleEventDataComponent(
+                                skill_character_component._CharacterDataRef()?.0,
+                            );
+                            let avatar_entity =
+                                battle_event_data_comp._SourceCaster_k__BackingField()?;
+
+                            let e = match get_skill_from_skilldata(skill_data) {
+                                Ok(skill) => match get_avatar_from_entity(avatar_entity) {
+                                    Ok(avatar) => Ok(Event::OnUseSkill(OnUseSkillEvent {
+                                        avatar: Entity {
+                                            uid: avatar.id,
+                                            team: Team::Player,
+                                        },
+                                        skill,
+                                    })),
+                                    Err(e) => {
+                                        log::error!("Summon Event Error: {}", e);
+                                        Err(anyhow!(
+                                            "{} Summon Event Error: {}",
+                                            function_name!(),
+                                            e
+                                        ))
+                                    }
+                                },
+                                Err(e) => {
+                                    log::error!("Summon Skill Error: {}", e);
+                                    Err(anyhow!(
+                                        "{} Summon Skill Event Error: {}",
+                                        function_name!(),
+                                        e
+                                    ))
+                                }
+                            };
+                            event = Some(e);
+                        }
+                        _ => {
+                            let variant = System_Enum::get_name(
+                                get_type_handle("RPG.GameCore.EntityType")?,
+                                skill_owner._EntityType()?.0,
+                            )?
+                            .to_string();
+
+                            log::warn!("Light entity type {} was not matched", variant)
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        if let Some(event) = event {
+            BattleContext::handle_event(event);
+        }
+        Ok(())
+    });
+}
+
+#[named]
+fn on_set_lineup(
+    instance: RPG_GameCore_BattleInstance,
+    a1: *const c_void,
+    a2: RPG_GameCore_BattleLineupData,
+    a3: i32,
+    a4: u32,
+    a5: bool,
+) {
+    log::debug!(function_name!());
+    safe_call!(unsafe {
+        let light_team = a2.LightTeam()?;
+        let extra_team = a2.ExtraTeam()?;
+
+        // Now process avatars
+        let mut avatars = Vec::<Avatar>::new();
+        let mut errors = Vec::<Error>::new();
+        for character in light_team.to_vec::<RPG_GameCore_LineUpCharacter>() {
+            let avatar_id = character.CharacterID()?;
+            match helpers::get_avatar_from_id((*avatar_id).into()) {
+                Ok(avatar) => avatars.push(avatar),
+                Err(e) => errors.push(e),
+            }
+        }
+
+        // Unsure if you can have more than one support char
+        for character in extra_team.to_vec::<RPG_GameCore_LineUpCharacter>() {
+            let avatar_id = character.CharacterID()?;
+            match helpers::get_avatar_from_id((*avatar_id).into()) {
+                Ok(avatar) => avatars.push(avatar),
+                Err(e) => errors.push(e),
+            }
+        }
+
+        // Populate the global buffer cache
+        crate::ui::helpers::populate_avatar_buffers(
+            &avatars.iter().map(|a| a.id).collect::<Vec<u32>>(),
+        );
+        crate::ui::helpers::clear_monster_buffers();
+        let property_kind = RPG_GameCore_AvatarPropertyType::BaseHP;
+        crate::ui::helpers::cache_property_buffer(property_kind);
+
+        let event = if !errors.is_empty() {
+            let errors = errors
+                .iter()
+                .map(|e| format!("{}. ", e.to_string()))
+                .collect::<String>();
+            Err(anyhow!(errors))
+        } else {
+            Ok(Event::OnSetBattleLineup(OnSetLineupEvent { avatars }))
+        };
+        BattleContext::handle_event(event);
+        Ok(())
+    });
+    ON_SET_LINEUP_Detour.call(instance, a1, a2, a3, a4, a5)
+}
+
+#[named]
+fn on_battle_begin(instance: RPG_GameCore_TurnBasedGameMode) {
+    log::debug!(function_name!());
+    let res = ON_BATTLE_BEGIN_Detour.call(instance);
+    safe_call!({
+        BattleContext::handle_event(Ok(Event::OnBattleBegin(OnBattleBeginEvent {
+            max_waves: u32::try_from(i32::from(
+                &*instance._WaveMonsterMaxCount_k__BackingField()?,
+            ))?,
+            max_cycles: u32::from(&*instance._ChallengeTurnLimit_k__BackingField()?),
+            stage_id: u32::from(&*instance._CurrentWaveStageID_k__BackingField()?),
+        })));
+        Ok(())
+    });
+    res
+}
+
+#[named]
+fn on_battle_end(instance: RPG_GameCore_TurnBasedGameMode) {
+    log::debug!(function_name!());
+    let res = ON_BATTLE_END_Detour.call(instance);
+    BattleContext::handle_event(Ok(Event::OnBattleEnd));
+    res
+}
+
+#[named]
+fn on_turn_begin(instance: RPG_GameCore_TurnBasedGameMode) {
+    log::debug!(function_name!());
+    // Update AV first
+    let res = ON_TURN_BEGIN_Detour.call(instance);
+
+    safe_call!(unsafe {
+        let turn_owner = instance._CurrentTurnActionEntity()?;
+
+        let entity_value: RPG_GameCore_EntityType = parse_il2cpp_enum(turn_owner._EntityType()?)?;
+
+        match entity_value {
+            RPG_GameCore_EntityType::Avatar => {
+                let e = match helpers::get_avatar_from_entity(turn_owner) {
+                    Ok(avatar) => Ok(Event::OnTurnBegin(OnTurnBeginEvent {
+                        action_value: get_elapsed_av(instance)?,
+                        turn_owner: Some(Entity {
+                            uid: avatar.id,
+                            team: Team::Player,
+                        }),
+                    })),
+                    Err(e) => {
+                        log::error!("Avatar Event Error: {}", e);
+                        Err(anyhow!("{} Avatar Event Error: {}", function_name!(), e))
+                    }
+                };
+
+                BattleContext::handle_event(e);
+            }
+            RPG_GameCore_EntityType::Monster => {
+                let e = Ok(Event::OnTurnBegin(OnTurnBeginEvent {
+                    action_value: get_elapsed_av(instance)?,
+                    turn_owner: Some(Entity {
+                        uid: (*turn_owner._RuntimeID_k__BackingField()?).into(),
+                        team: Team::Enemy,
+                    }),
+                }));
+
+                BattleContext::handle_event(e);
+            }
+            _ => {
+                BattleContext::handle_event(Ok(Event::OnTurnBegin(OnTurnBeginEvent {
+                    action_value: get_elapsed_av(instance)?,
+                    turn_owner: None,
+                })));
+            }
+        }
+        Ok(())
+    });
+    res
+}
+
+#[named]
+fn on_turn_end(instance: RPG_GameCore_TurnBasedAbilityComponent, a1: i32) {
+    log::debug!(function_name!());
+    // Can match player v enemy turn w/
+    // RPG.GameCore.TurnBasedGameMode.GetCurrentTurnTeam
+    BattleContext::handle_event(Ok(Event::OnTurnEnd));
+    ON_TURN_END_Detour.call(instance, a1)
+}
+
+#[named]
+pub fn on_update_wave(instance: RPG_GameCore_TurnBasedGameMode) {
+    let res = ON_UPDATE_WAVE_Detour.call(instance);
+    safe_call!({
+        BattleContext::handle_event(Ok(Event::OnUpdateWave(OnUpdateWaveEvent {
+            wave: u32::try_from(i32::from(&*instance._WaveMonsterCurrentCount()?))?,
+        })));
+        Ok(())
+    });
+    res
+}
+
+#[named]
+pub fn on_update_cycle(instance: RPG_GameCore_TurnBasedGameMode) -> u32 {
+    log::debug!(function_name!());
+    let cycle = ON_UPDATE_CYCLE_Detour.call(instance);
+    BattleContext::handle_event(Ok(Event::OnUpdateCycle(OnUpdateCycleEvent { cycle })));
+    cycle
+}
+
+#[named]
+fn handle_hp_change(turn_based_ability_component: RPG_GameCore_TurnBasedAbilityComponent) {
+    log::debug!(function_name!());
+    use std::string::ToString;
+    safe_call!(unsafe {
+        let property_kind = RPG_GameCore_AbilityProperty::CurrentHP.to_string();
+        let property = RPG_GameCore_AbilityProperty__Boxed(System_Enum::parse(
+            get_type_handle("RPG.GameCore.AbilityProperty")?,
+            Il2CppString::new(&property_kind)?,
+        )?);
+
+        let property_value = turn_based_ability_component.get_property(*property)?.to_double()?;
+            
+        let entity = turn_based_ability_component.as_base()._OwnerRef()?;
+        let entity_value: RPG_GameCore_EntityType = parse_il2cpp_enum(entity._EntityType()?)?;
+
+        match entity_value {
+            RPG_GameCore_EntityType::Avatar => {
+                let e = match helpers::get_avatar_from_entity(entity) {
+                    Ok(avatar) => Ok(Event::OnStatChange(OnStatChangeEvent {
+                        entity: Entity {
+                            uid: avatar.id,
+                            team: Team::Player,
+                        },
+                        property: Property {
+                            r#type: property_kind,
+                            value: property_value,
+                        },
+                    })),
+                    Err(e) => {
+                        log::error!("Avatar Event Error: {}", e);
+
+                        Err(anyhow!("{} Avatar Event Error: {}", function_name!(), e))
+                    }
+                };
+                BattleContext::handle_event(e);
+            }
+            RPG_GameCore_EntityType::Monster => {
+                BattleContext::handle_event(Ok(Event::OnStatChange(OnStatChangeEvent {
+                    entity: Entity {
+                        uid: (*entity._RuntimeID_k__BackingField()?).into(),
+                        team: Team::Enemy,
+                    },
+                    property: Property {
+                        r#type: property_kind,
+                        value: property_value,
+                    },
+                })));
+            }
+            _ => {}
+        }
+        Ok(())
+    });
+}
+
+#[named]
+pub fn on_direct_change_hp(
+    instance: RPG_GameCore_TurnBasedAbilityComponent,
+    a1: i32,
+    a2: RPG_GameCore_FixPoint,
+    a3: *const c_void,
+) {
+    log::debug!(function_name!());
+    let res = ON_DIRECT_CHANGE_HP_Detour.call(instance, a1, a2, a3);
+    handle_hp_change(instance);
+    res
+}
+
+#[named]
+pub fn on_direct_damage_hp(
+    instance: RPG_GameCore_TurnBasedAbilityComponent,
+    a1: RPG_GameCore_FixPoint,
+    a2: i32,
+    a3: *const c_void,
+    a4: RPG_GameCore_FixPoint,
+    a5: *const c_void,
+    a6: i32
+) {
+    log::debug!(function_name!());
+    let res = ON_DIRECT_DAMAGE_HP_Detour.call(instance, a1, a2, a3, a4, a5, a6);
+    handle_hp_change(instance);
+    res
+}
+
+#[named]
+pub fn on_stat_change(
+    instance: RPG_GameCore_TurnBasedAbilityComponent,
+    property: RPG_GameCore_AbilityProperty,
+    a2: i32,
+    new_stat: RPG_GameCore_FixPoint,
+    a4: *const c_void,
+) -> bool {
+    log::debug!(function_name!());
+    let res = ON_STAT_CHANGE_Detour.call(instance, property, a2, new_stat, a4);
+    safe_call!(unsafe {
+        let entity = instance.as_base()._OwnerRef()?;
+        let boxed = RPG_GameCore_AbilityProperty__Boxed(System_Enum::to_object_from_int(
+            get_type_handle("RPG.GameCore.AbilityProperty")?,
+            property as i32,
+        )?);
+        let property_kind =
+            System_Enum::get_name(get_type_handle("RPG.GameCore.AbilityProperty")?, boxed.0)?;
+        let mut property_value = new_stat.to_double()?;
+        let entity_value: RPG_GameCore_EntityType = parse_il2cpp_enum(entity._EntityType()?)?;
+
+        if boxed.unbox()? == RPG_GameCore_AbilityProperty::ActionDelay {
+            property_value *= 10.;
+        }
+
+        match entity_value {
+            RPG_GameCore_EntityType::Avatar => {
+                let e = match helpers::get_avatar_from_entity(entity)
+                    .context("on_stat_change: failed to resolve avatar from entity")
+                {
+                    Ok(avatar) => Ok(Event::OnStatChange(OnStatChangeEvent {
+                        entity: Entity {
+                            uid: avatar.id,
+                            team: Team::Player,
+                        },
+                        property: Property {
+                        r#type: property_kind.to_string(),
+                        value: property_value
+                    },
+                    })),
+                    Err(e) => {
+                        Err(anyhow!("{} Avatar Event Error: {}", function_name!(), e))
+                    }
+                };
+                BattleContext::handle_event(e);
+            }
+            RPG_GameCore_EntityType::Monster => {
+                BattleContext::handle_event(Ok(Event::OnStatChange(OnStatChangeEvent {
+                    entity: Entity {
+                        uid: (*entity._RuntimeID_k__BackingField()?).into(),
+                        team: Team::Enemy,
+                    },
+                    property: Property {
+                        r#type: property_kind.to_string(),
+                        value: property_value,
+                    },
+                })));
+            }
+            _ => {}
+        }
+        Ok(())
+    });
+    res
+}
+
+use anyhow::Context;
+use std::io::Cursor;
+use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
+use windows::Win32::System::Threading::GetCurrentProcess;
+
+#[derive(Clone, Copy)]
+struct EntityDefeatedOffsets {
+    defeated_entity: usize,
+    killer_entity: usize,
+}
+
+static ENTITY_DEFEATED_OFFSETS: OnceLock<EntityDefeatedOffsets> = OnceLock::new();
+
+unsafe fn resolve_defeated_entity_offset() -> Result<EntityDefeatedOffsets> {
+    // This should be enough
+    let buffer = vec![0u8; 0x9A];
+    let mut bytes_read = 0usize;
+    let process_handle = unsafe { GetCurrentProcess() };
+    let target_fn = RPG_GameCore_TurnBasedGameMode::get_class_static()?
+        .find_method("_MakeLimboEntityDie", vec!["*"])?;
+    // .va();
+
+    unsafe {
+        ReadProcessMemory(
+            process_handle,
+            target_fn.va(),
+            buffer.as_ptr() as _,
+            buffer.len(),
+            Some(&mut bytes_read),
+        )
+    }
+    .context("Failed to read module memory")?;
+
+    // mov     rdx, [r15+??h]
+    // mov     rcx, r14
+    // call    RPG::GameCore::TurnBasedGameMode::CheckLimboEntityCanDie
+    // let _method = RPG_GameCore_TurnBasedGameMode::get_class_static()?
+    //     .find_method("_CheckLimboEntityCanDie", vec!["RPG.GameCore.GameEntity"])?;
+
+    static PATTERN: &str = "49 8B 57 ? 4C 89 F1 E8 ? ? ? ?";
+    let pattern_tokens = PATTERN.split_whitespace().collect::<Vec<_>>();
+    let _call_opcode_index = pattern_tokens
+        .iter()
+        .position(|token| *token == "E8")
+        .context("Pattern does not contain E8 call opcode")?;
+
+    let locs =
+        patternscan::scan(Cursor::new(buffer), &PATTERN).context("Failed to scan for pattern")?;
+    let addr = locs
+        .first()
+        // .iter().map(|x| unsafe { target_fn.byte_offset(*x as _) })
+        // // .find(|x| unsafe {
+        // //     // Get call relative address
+        // //     let rel_addr_ptr = (*x).byte_offset((call_opcode_index + 1) as isize) as *const i32;
+        // //     let rel_addr = i32::from_le(rel_addr_ptr.read_unaligned()) as isize;
+        // //     let opcode_addr = (*x).byte_offset(call_opcode_index as isize);
+        // //     let call_addr = opcode_addr.byte_offset(rel_addr);
+        // //     if call_addr == method.va() {
+        // //         true
+        // //     } else {
+        // //         false
+        // //     }
+        // // })
+        // .get
+        .context("Could not resolve defeated entity offset")?;
+    let addr = unsafe { target_fn.va().byte_offset(*addr as isize) };
+
+    // Field offset is at ?? in the pattern, which is the address of the defeated entity.
+    let defeated_entity_offset = unsafe { *((addr.wrapping_add(3)) as *const u8) as usize };
+
+    let class = get_cached_class(target_fn.arg(0).name())?;
+    let mut has_matching_offset = false;
+    let mut alternate_entity_type_offset = None;
+
+    let field_iter: *const c_void = null();
+    loop {
+        let field = il2cpp_class_get_fields(class, &field_iter);
+        if field.0.is_null() {
+            break;
+        }
+
+        let field_offset = il2cpp_field_get_offset(field) as usize;
+        if field_offset == defeated_entity_offset {
+            has_matching_offset = true;
+        }
+
+        let field_type = il2cpp_field_get_type(field);
+        if field_type.name() == "RPG.GameCore.GameEntity" && field_offset != defeated_entity_offset
+        {
+            alternate_entity_type_offset = Some(field_offset);
+        }
+    }
+
+    if !has_matching_offset {
+        return Err(anyhow!(
+            "Failed to match defeated entity field offset {:#x} against {} fields",
+            defeated_entity_offset,
+            class.qualified_name()
+        ));
+    }
+
+    Ok(EntityDefeatedOffsets {
+        defeated_entity: defeated_entity_offset,
+        killer_entity: alternate_entity_type_offset
+            .context("Failed to find alternate RPG.GameCore.EntityType field offset")?,
+    })
+}
+
+unsafe fn get_entity_defeated_offsets() -> Result<EntityDefeatedOffsets> {
+    ENTITY_DEFEATED_OFFSETS
+        .get()
+        .copied()
+        .ok_or_else(|| anyhow!("Entity defeated offsets are not initialized"))
+}
+
+#[named]
+pub fn on_entity_defeated(instance: RPG_GameCore_TurnBasedGameMode, a2: *const c_void) -> bool {
+    log::debug!(function_name!());
+    let res = ON_ENTITY_DEFEATED_Detour.call(instance, a2);
+
+    safe_call!(unsafe {
+        let offsets = get_entity_defeated_offsets()?;
+
+        let defeated_entity =
+            *(a2.byte_offset(offsets.defeated_entity as isize) as *const RPG_GameCore_GameEntity);
+        let killer_entity =
+            *(a2.byte_offset(offsets.killer_entity as isize) as *const RPG_GameCore_GameEntity);
+
+        let killer_entity_value: RPG_GameCore_EntityType =
+            parse_il2cpp_enum(killer_entity._EntityType()?)?;
+
+        let defeated_entity_alive_state_value: RPG_GameCore_AliveState =
+            parse_il2cpp_enum(defeated_entity._AliveState()?)?;
+
+        if res && defeated_entity_alive_state_value == RPG_GameCore_AliveState::Dying {
+            if killer_entity_value == RPG_GameCore_EntityType::Avatar {
+                let e = match helpers::get_avatar_from_entity(killer_entity) {
+                    Ok(avatar) => Ok(Event::OnEntityDefeated(OnEntityDefeatedEvent {
+                        killer: Entity {
+                            uid: avatar.id,
+                            team: Team::Player,
+                        },
+                        entity_defeated: Entity {
+                            uid: (*defeated_entity._RuntimeID_k__BackingField()?).into(),
+                            team: Team::Enemy,
+                        },
+                    })),
+                    Err(e) => {
+                        log::error!("Avatar Event Error: {}", e);
+
+                        Err(anyhow!("{} Avatar Event Error: {}", function_name!(), e))
+                    }
+                };
+                BattleContext::handle_event(e);
+            };
+        }
+        Ok(())
+    });
+    res
+}
+
+#[named]
+pub fn on_update_team_formation(instance: RPG_GameCore_TeamFormationComponent) {
+    log::debug!(function_name!());
+    let res = ON_UPDATE_TEAM_FORMATION_Detour.call(instance);
+    safe_call!({
+        let team_value: RPG_GameCore_TeamType = parse_il2cpp_enum(instance._Team()?)?;
+
+        if team_value == RPG_GameCore_TeamType::TeamDark {
+            let team = instance._TeamFormationDatas()?;
+            let entities = team
+                .to_vec::<RPG_GameCore_GameComponentBase>()
+                .iter()
+                .map(|entity_formation| Entity {
+                    uid: (*entity_formation
+                        ._OwnerRef()
+                        .unwrap()
+                        ._RuntimeID_k__BackingField()
+                        .unwrap())
+                    .into(),
+                    team: Team::Enemy,
+                })
+                .collect::<Vec<Entity>>();
+
+            BattleContext::handle_event(Ok(Event::OnUpdateTeamFormation(
+                OnUpdateTeamFormationEvent {
+                    entities,
+                    team: Team::Enemy,
+                },
+            )));
+        }
+        Ok(())
+    });
+    res
+}
+
+#[named]
+pub fn on_initialize_enemy(
+    instance: RPG_GameCore_MonsterDataComponent,
+    turn_based_ability_component: RPG_GameCore_TurnBasedAbilityComponent,
+) {
+    log::debug!(function_name!());
+    let res = ON_INITIALIZE_ENEMY_Detour.call(instance, turn_based_ability_component);
+    safe_call!({
+        let row_data = instance._MonsterRowData()?;
+        let row = row_data._Row()?;
+        let monster_id = unsafe { instance.get_monster_template_id()? };
+        crate::ui::helpers::cache_monster_buffer(monster_id);
+        let mut base_stats = BattleStats {
+            properties: HashMap::new(),
+        };
+        base_stats.set_value(RPG_GameCore_AbilityProperty::Level.to_string(), unsafe {
+            row_data.get_Level()?
+        }
+            as f64);
+        base_stats.set_value(RPG_GameCore_AbilityProperty::MaxHP.to_string(), unsafe {
+            instance._DefaultMaxHP()?.to_double()?
+        });
+        base_stats.set_value(
+            RPG_GameCore_AbilityProperty::CurrentHP.to_string(),
+            unsafe { instance._DefaultMaxHP()?.to_double()? },
+        );
+
+        let name_id = row.MonsterName()?;
+        let monster_name = get_textmap_content(&name_id)?;
+        let entity = instance._OwnerRef()?;
+
+        BattleContext::handle_event(Ok(Event::OnInitializeEnemy(OnInitializeEnemyEvent {
+            enemy: Enemy {
+                id: monster_id,
+                uid: (*entity._RuntimeID_k__BackingField().unwrap()).into(),
+                name: (*monster_name).to_string(),
+                base_stats,
+            },
+        })));
+        Ok(())
+    });
+    res
+}
+
+retour::static_detour! {
+    static ON_DAMAGE_Detour: fn(*const c_void, *const c_void, *const c_void, Il2CppString, RPG_GameCore_GameEntity, RPG_GameCore_GameEntity, RPG_GameCore_FixPoint, RPG_GameCore_FixPoint, RPG_GameCore_FixPoint, Il2CppString) -> *const c_void;
+    static ON_COMBO_Detour: fn(*const c_void, RPG_GameCore_TurnBasedGameMode);
+    static ON_USE_SKILL_Detour: fn(RPG_GameCore_SkillCharacterComponent, i32, *const c_void, bool, *const c_void, *const c_void, i32) -> bool;
+    static ON_SET_LINEUP_Detour: fn(RPG_GameCore_BattleInstance, *const c_void, RPG_GameCore_BattleLineupData, i32, u32, bool);
+    static ON_BATTLE_BEGIN_Detour: fn(RPG_GameCore_TurnBasedGameMode);
+    static ON_BATTLE_END_Detour: fn(RPG_GameCore_TurnBasedGameMode);
+    static ON_TURN_BEGIN_Detour: fn(RPG_GameCore_TurnBasedGameMode);
+    static ON_TURN_END_Detour: fn(RPG_GameCore_TurnBasedAbilityComponent, i32);
+    static ON_UPDATE_WAVE_Detour: fn(RPG_GameCore_TurnBasedGameMode);
+    static ON_UPDATE_CYCLE_Detour: fn(RPG_GameCore_TurnBasedGameMode) -> u32;
+    static ON_DIRECT_CHANGE_HP_Detour: fn(RPG_GameCore_TurnBasedAbilityComponent, i32, RPG_GameCore_FixPoint, *const c_void);
+    static ON_DIRECT_DAMAGE_HP_Detour: fn(RPG_GameCore_TurnBasedAbilityComponent, RPG_GameCore_FixPoint, i32, *const c_void, RPG_GameCore_FixPoint, *const c_void, i32);
+    static ON_STAT_CHANGE_Detour: fn(RPG_GameCore_TurnBasedAbilityComponent, RPG_GameCore_AbilityProperty, i32, RPG_GameCore_FixPoint, *const c_void) -> bool;
+    static ON_ENTITY_DEFEATED_Detour: fn(RPG_GameCore_TurnBasedGameMode, *const c_void) -> bool;
+    static ON_UPDATE_TEAM_FORMATION_Detour: fn(RPG_GameCore_TeamFormationComponent);
+    static ON_INITIALIZE_ENEMY_Detour: fn(RPG_GameCore_MonsterDataComponent, RPG_GameCore_TurnBasedAbilityComponent);
+}
+
+pub fn subscribe() -> Result<()> {
+    unsafe {
+        subscribe_function!(
+            ON_DAMAGE_Detour,
+            get_cached_class("RPG.GameCore.LevelPreDamageEntity")?
+                .find_method(
+                    "Init",
+                    vec![
+                        "*",
+                        "RPG.GameCore.AttackData",
+                        "string",
+                        "RPG.GameCore.GameEntity",
+                        "RPG.GameCore.GameEntity",
+                        "RPG.GameCore.FixPoint",
+                        "RPG.GameCore.FixPoint",
+                        "RPG.GameCore.FixPoint",
+                        "string"
+                    ]
+                )?
+                .va(),
+            on_damage
+        )?;
+
+        // Resolve on_combo
+        let mut combo_instance_class = None;
+        let mut on_combo_method = None;
+        let field_iter: *const c_void = null();
+        loop {
+            let field = il2cpp_class_get_fields(
+                get_cached_class("RPG.GameCore.LevelSingleInsertAbilityFinishOrAbort")?,
+                &field_iter,
+            );
+            if field.0.is_null() {
+                break;
+            }
+            let field_name = il2cpp_runtime::utils::cstr_to_str(il2cpp_field_get_name(field));
+            if field_name == "<TurnInsertAbilityInstance>k__BackingField" {
+                let field_type = il2cpp_field_get_type(field);
+                if let Ok(method) = field_type
+                    .class()
+                    .find_method("*", vec!["RPG.GameCore.TurnBasedGameMode"])
+                {
+                    combo_instance_class = Some(field_type.class());
+                    on_combo_method = Some(method);
+                    break;
+                }
+            }
+        }
+
+        if let Some(method) = on_combo_method {
+            subscribe_function!(ON_COMBO_Detour, method.va(), on_combo)?;
+        } else {
+            return Err(anyhow!("Failed to find on_combo method"));
+        }
+
+        if let Some(class) = combo_instance_class {
+            get_combo_field_offsets(class)?;
+        }
+
+        let defeated_offsets = resolve_defeated_entity_offset()?;
+        let _ = ENTITY_DEFEATED_OFFSETS.set(defeated_offsets);
+        get_entity_defeated_offsets()?;
+
+        subscribe_function!(
+            ON_USE_SKILL_Detour,
+            RPG_GameCore_SkillCharacterComponent::get_class_static()?
+                .find_method(
+                    "UseSkill",
+                    vec![
+                        "int",
+                        "RPG.GameCore.AbilityCursorInfo",
+                        "bool",
+                        "System.Collections.Generic.List<RPG.GameCore.AbilityDynamicFloatInjection>",
+                        "System.Collections.Generic.List<RPG.GameCore.AbilityDynamicStringInjection>",
+                        "int"
+                    ]
+                )?
+                .va(),
+            on_use_skill
+        )?;
+
+        subscribe_function!(
+            ON_SET_LINEUP_Detour,
+            RPG_GameCore_BattleInstance::get_class_static()?
+                .find_method(
+                    ".ctor",
+                    vec!["*", "RPG.GameCore.BattleLineupData", "int", "uint", "bool"]
+                )?
+                .va(),
+            on_set_lineup
+        )?;
+        subscribe_function!(
+            ON_BATTLE_BEGIN_Detour,
+            RPG_GameCore_TurnBasedGameMode::get_class_static()?
+                .find_method("_GameModeBegin", vec![])?
+                .va(),
+            on_battle_begin
+        )?;
+        subscribe_function!(
+            ON_BATTLE_END_Detour,
+            RPG_GameCore_TurnBasedGameMode::get_class_static()?
+                .find_method("_GameModeEnd", vec![])?
+                .va(),
+            on_battle_end
+        )?;
+        subscribe_function!(
+            ON_TURN_BEGIN_Detour,
+            RPG_GameCore_TurnBasedGameMode::get_class_static()?
+                .find_method("DoTurnPrepareStartWork", vec![])?
+                .va(),
+            on_turn_begin
+        )?;
+        subscribe_function!(
+            ON_TURN_END_Detour,
+            RPG_GameCore_TurnBasedAbilityComponent::get_class_static()?
+                .find_method("ProcessOnLevelTurnActionEndEvent", vec!["int"])?
+                .va(),
+            on_turn_end
+        )?;
+        subscribe_function!(
+            ON_UPDATE_WAVE_Detour,
+            RPG_GameCore_TurnBasedGameMode::get_class_static()?
+                .find_method("UpdateCurrentWaveCount", vec![])?
+                .va(),
+            on_update_wave
+        )?;
+        subscribe_function!(
+            ON_UPDATE_CYCLE_Detour,
+            RPG_GameCore_TurnBasedGameMode::get_class_static()?
+                .find_method("get_ChallengeTurnLeft", vec![])?
+                .va(),
+            on_update_cycle
+        )?;
+        subscribe_function!(
+            ON_DIRECT_CHANGE_HP_Detour,
+            RPG_GameCore_TurnBasedAbilityComponent::get_class_static()?
+                .find_method(
+                    "DirectChangeHP",
+                    vec![
+                        "RPG.GameCore.PropertyModifyFunction",
+                        "RPG.GameCore.FixPoint",
+                        "*"
+                    ],
+                )?
+                .va(),
+            on_direct_change_hp
+        )?;
+        subscribe_function!(
+            ON_DIRECT_DAMAGE_HP_Detour,
+            RPG_GameCore_TurnBasedAbilityComponent::get_class_static()?
+                // Not sure if I need keyword out
+                .find_method(
+                    "DirectDamageHP",
+                    vec![
+                        "RPG.GameCore.FixPoint",
+                        "RPG.GameCore.AntiLockHPStrength",
+                        "*",
+                        "RPG.GameCore.FixPoint&",
+                        "System.Nullable<RPG.GameCore.FixPoint>",
+                        "RPG.GameCore.DamageIntegerizeCategory"
+                    ],
+                )?
+                .va(),
+            on_direct_damage_hp
+        )?;
+        subscribe_function!(
+            ON_STAT_CHANGE_Detour,
+            RPG_GameCore_TurnBasedAbilityComponent::get_class_static()?
+                .find_method(
+                    "ModifyProperty",
+                    vec![
+                        "RPG.GameCore.AbilityProperty",
+                        "RPG.GameCore.PropertyModifyFunction",
+                        "RPG.GameCore.FixPoint",
+                        "*"
+                    ]
+                )?
+                .va(),
+            on_stat_change
+        )?;
+        subscribe_function!(
+            ON_ENTITY_DEFEATED_Detour,
+            RPG_GameCore_TurnBasedGameMode::get_class_static()
+                .unwrap()
+                .find_method("_MakeLimboEntityDie", vec!["*"])?
+                .va(),
+            on_entity_defeated
+        )?;
+        subscribe_function!(
+            ON_UPDATE_TEAM_FORMATION_Detour,
+            RPG_GameCore_TeamFormationComponent::get_class_static()?
+                .find_method("_RefreshTeammateIndex", vec![])?
+                .va(),
+            on_update_team_formation
+        )?;
+        subscribe_function!(
+            ON_INITIALIZE_ENEMY_Detour,
+            RPG_GameCore_MonsterDataComponent::get_class_static()?
+                .find_method(
+                    "OnAbilityCharacterInitialized",
+                    vec!["RPG.GameCore.TurnBasedAbilityComponent"],
+                )?
+                .va(),
+            on_initialize_enemy
+        )?;
+        Ok(())
+    }
+}

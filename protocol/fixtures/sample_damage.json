@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "type": "damage",
+  "sequence": 4,
+  "timestamp": 1726201000.375,
+  "payload": {
+    "sessionId": "11111111-2222-4333-8444-555555555555",
+    "sourceEntityId": 1001,
+    "sourceCharacterId": 1310,
+    "targetEntityId": 20001,
+    "skillId": 131001,
+    "amount": 182930,
+    "damageType": "unknown",
+    "isCrit": false
+  }
+}

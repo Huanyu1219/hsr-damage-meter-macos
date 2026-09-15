@@ -1,0 +1,96 @@
+[package]
+name = "veritas"
+edition = "2024"
+license-file = "LICENSE"
+repository = "https://github.com/hessiser/veritas/"
+version = "0.2.52"
+
+[package.metadata.i18n]
+available-locales = ["en", "fr", "es", "de", "it", "ja", "pt", "nl", "ru", "vi", "zh", "pl"]
+default-locale = "en"
+load-path = "locales"
+minify-key = true
+minify-key-len = 12
+minify-key-thresh = 8
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# UI
+egui = { version = "0.32.0", features = ["serde", "persistence"] }
+egui_plot = { version = "0.33.0", features = ["serde"] }
+edio11 = { git = "https://github.com/hessiser/edio11-rs.git", rev = "fd1384c" }
+egui-phosphor = { version = "0.10.0", features = ["bold"]}
+egui_colors = { version = "0.9.0", features = ["serde"] }
+egui-notify = "0.20.0"
+egui_logger = "0.8.0"
+egui_inbox = "0.9.0"
+egui_commonmark = "0.21.1"
+egui_extras = "0.32.0"
+egui_table = "0.7.0"
+
+# Logging
+log = "0.4.29"
+slog = { version = "2.7.0", features = ["max_level_trace", "release_max_level_trace"] }
+slog-term = "2.9.1"
+
+# Server
+axum = { version = "0.8.4" }
+axum-server = "0.7.2"
+socketioxide = "0.17.2"
+tokio = { version = "1.46.1", features = ["full"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.6", features = ["cors"] }
+
+# Misc
+retour = { version = "0.3", features = ["static-detour"] }
+ctor = "0.5.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.141"
+anyhow = "1.0.98"
+function_name = "0.3.0"
+rust-i18n = "3.1.5"
+csv = "1.3.1"
+phf = { version = "0.12.1", features = ["macros"] }
+directories = "6.0.0"
+chrono = { version = "0.4", features = ["serde"] }
+fs-err = "=3.1.0"
+paste = "1.0.15"
+patternscan = "1.2.0"
+microseh = "1.1.2"
+reqwest = { version = "0.12.22", features = ["json", "blocking"] }
+rfd = "0.15.4"
+semver = "1.0.26"
+indoc = "2.0.6"
+widestring = "1.2.0"
+ron = "0.10.1"
+strum = { version = "0.28", features = ["derive"] }
+parse-changelog = { version = "0.6.12", default-features = false }
+il2cpp-runtime = { git = "https://github.com/hessiser/il2cpp-rust.git", rev = "51f8c1f" , features = ["log"]}
+image = "0.25.10"
+
+[dev-dependencies]
+eframe = { version = "0.32.0", features = ["serde", "persistence"] }
+winit = { version = "0.30.12", default-features = false, features = ["wayland"] }
+
+[dependencies.windows]
+version = "0.61.3"
+features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Console",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Direct3D11",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Diagnostics_Debug",
+]
+
+[build-dependencies]
+winres = "0.1.12"
