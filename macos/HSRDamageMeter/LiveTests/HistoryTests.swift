@@ -173,7 +173,8 @@ final class HistoryTests: XCTestCase {
     let partial = try await store.historyDetail(id: rows[0].id)
     XCTAssertTrue(partial?.snapshot.partial == true)
     try await start(store)
-    for _ in 0..<128 { try await damage(store) }  // Force a durable running checkpoint.
+    for _ in 0..<128 { try await damage(store) }
+    _ = try await store.history()  // Wait until the running checkpoint is durable before reopening.
     let reopened = LiveCombatStore()
     await reopened.enableHistory(at: url)
     rows = try await reopened.history()
