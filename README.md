@@ -15,31 +15,37 @@
 
 ## 快速开始
 
-### 环境要求
+从 [最新 Release](https://github.com/Huanyu1219/hsr-damage-meter-macos/releases/latest) 下载三个文件：
 
-- macOS 14 或更新版本
-- Swift 6（Xcode Command Line Tools）
-- Rust 1.98.1+
-- Python 3.10+
+- [`HSR-Damage-Meter-macOS-arm64.zip`](https://github.com/Huanyu1219/hsr-damage-meter-macos/releases/latest/download/HSR-Damage-Meter-macOS-arm64.zip)
+- [`xluau.dll`](https://github.com/Huanyu1219/hsr-damage-meter-macos/releases/latest/download/xluau.dll)
+- [`SHA256SUMS.txt`](https://github.com/Huanyu1219/hsr-damage-meter-macos/releases/latest/download/SHA256SUMS.txt)
 
-### 构建应用
+App 需要 macOS 14 或更新版本及 Apple 芯片 Mac。解压 ZIP，将 `HSR Damage Meter.app` 移到“应用程序”。当前版本使用临时签名、未经过 Apple 公证；首次打开请在 Finder 中右键 App 选择“打开”，并确认系统提示。若仍被阻止，请到“系统设置 → 隐私与安全性”使用“仍要打开”。
 
-在项目根目录运行：
+完全退出游戏和 YAAGL/Wine 容器，将下载的 `xluau.dll` 放到 `StarRail.exe` 同级目录：
 
-```sh
-./scripts/build-macos-app.sh
-open 'dist/HSR Damage Meter.app'
+```text
+Honkai Star Rail/
+├── StarRail.exe
+└── xluau.dll
 ```
 
-### 验证开发环境
+启动顺序为：先启动游戏，再打开 App。App 显示“Collector 已连接”后，从下一场完整战斗开始统计。不要在游戏运行时替换 DLL；替换前备份原文件。详细校验及回滚方法见 [DLL 安装指南](docs/DLL_INSTALL.md)。
+
+## 从源码构建
+
+开发环境需要 Swift 6、Rust 1.98.1+ 和 Python 3.10+：
 
 ```sh
 python3 -m venv .tools/validation-venv
 .tools/validation-venv/bin/python -m pip install -r scripts/requirements-validation.lock
 ./scripts/check.sh
+./scripts/build-macos-app.sh
+open 'dist/HSR Damage Meter.app'
 ```
 
-### 测试协议数据流（无需游戏）
+无需游戏也可以测试协议数据流：
 
 ```sh
 # Rust 示例
@@ -51,15 +57,17 @@ swift run --package-path macos/HSRDamageMeter fixture-roundtrip < protocol/fixtu
 
 输出为标准化 JSONL 格式，包含压力测试数据（Int64 最大值等），**不代表真实战斗**。
 
-## 安装收集器
+## Collector DLL 说明
 
-如果要从 Wine 中的游戏接收实时数据，安装对应的 Collector 补丁：
+Release 中的 `xluau.dll` 基于 Veritas 0.2.52，关闭游戏内 UI 并将默认日志等级降为 Info。SHA-256 为 `45bb9f35852a6dd8292d317b7e154233105e5be5131abec537a2357c63269036`。
+
+已有本地构建清单的开发者也可以使用安装脚本：
 
 ```sh
 python3 scripts/install-collector.py no-ui-info --game-dir '/path/to/Honkai Star Rail'
 ```
 
-脚本会验证哈希、确认游戏已退出后再替换文件。详见 [安装与回滚说明](docs/UI_ISOLATION_ACCEPTANCE.md)。
+脚本会验证哈希、确认游戏已退出后再替换文件。
 
 ## 架构概览
 
@@ -84,6 +92,7 @@ Swift 客户端（解码 + CombatStore actor）
 - [开发指南](docs/DEVELOPMENT.md) —— 工具链、编译选项、调试
 - [IPC 协议规范](docs/IPC_PROTOCOL.md) —— 消息格式与事件类型
 - [原生应用使用](docs/NATIVE_APP.md) —— 功能说明与常见问题
+- [DLL 安装指南](docs/DLL_INSTALL.md) —— 下载、放置位置、校验与回滚
 - [项目规范](CODEX_SPEC.md) —— 工程要求与 UI 设计约束
 - [技术决策](docs/adr/) —— 为什么选择复用 Veritas、为什么需要无 UI 补丁
 
