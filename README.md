@@ -3,15 +3,20 @@
 为在 Wine 中运行《崩坏：星穹铁道》的 Mac 玩家设计的本地伤害统计工具。
 
 通过接入开源 Veritas 解析的战斗数据（WebSocket），在 Mac 上提供原生实时伤害面板、浮窗、菜单栏状态显示、敌人信息追踪和本地战斗历史导出。
+## 游戏画面截图
 
-## 特性
+<p align="center">
+  <a href="docs/images/dashboard.png">
+    <img src="docs/images/dashboard.png" alt="HSR Damage Meter Dashboard" width="49%" />
+  </a>
+  <a href="docs/images/ingame-overlay.png">
+    <img src="docs/images/ingame-overlay.png" alt="HSR Damage Meter In-Game Overlay" width="49%" />
+  </a>
+</p>
 
-- **原生 macOS 设计** —— 使用 SwiftUI，与系统视觉风格一致
-- **实时伤害显示** —— 接收 Veritas 解析的战斗事件，零延迟更新
-- **灵活的显示方案** —— 可选主窗口、浮窗模式、菜单栏状态
-- **战斗历史** —— 本地存储每场战斗的数据，支持 JSON 导出
-- **游戏隔离** —— Swift 客户端完全独立，不触及游戏进程
-- **离线可测试** —— 无需游戏即可验证协议和数据流
+<p align="center">
+  <sub>左：统计面板（主窗口）｜右：游戏内悬浮窗（Overlay）</sub>
+</p>
 
 ## 快速开始
 
